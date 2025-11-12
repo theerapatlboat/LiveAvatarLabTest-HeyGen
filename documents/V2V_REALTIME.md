@@ -281,10 +281,15 @@ Body: {"text": "สวัสดีครับ"}
 
 ---
 
-## PHASE 4: ElevenLabs Realtime Speech-to-Text Integration ⚠️ ยังไม่ได้ทำ
+## PHASE 4: ElevenLabs Realtime Speech-to-Text Integration 🔄 กำลังดำเนินการ
 
-**Status:** ⚠️ **ยังไม่ได้ Implement** - ต้องทำใหม่ทั้งหมด
-**Estimated Effort:** 4-6 ชั่วโมง
+**Status:** 🔄 **กำลังดำเนินการ** - TASK 4.1 เสร็จแล้ว (33% complete)
+**Progress:**
+- ✅ TASK 4.1: Single-Use Token API (สำเร็จ)
+- ⚠️ TASK 4.2: React Hook (ยังไม่ได้ทำ)
+- ⚠️ TASK 4.3: Integration (ยังไม่ได้ทำ)
+
+**Estimated Remaining Effort:** 3-4 ชั่วโมง
 
 ### ทำไมต้องมี Phase นี้?
 
@@ -295,18 +300,19 @@ Phase 4 จะใช้ ElevenLabs Scribe **real-time streaming** ทำให�
 - ✅ ลด latency เหลือ <500ms
 - ✅ ประสบการณ์ดีกว่า (ไม่ต้องรอ)
 
-### สิ่งที่ยังต้องสร้าง
+### สิ่งที่ต้องทำ
 
-1. ❌ **API Endpoint**: `/api/elevenlabs-stt-token`
+1. ✅ **API Endpoint**: `/api/elevenlabs-stt-token` - **สำเร็จแล้ว**
    - Generate single-use token สำหรับ WebSocket authentication
    - Token หมดอายุใน 15 นาที
+   - HTML test page: `http://localhost:3000/test-elevenlabs-stt-token.html`
 
-2. ❌ **React Hook**: `apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts`
+2. ⚠️ **React Hook**: `apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts` - **ยังไม่ได้ทำ**
    - Connect WebSocket to ElevenLabs Scribe API
    - Stream audio จาก microphone
    - Handle partial/final transcripts
 
-3. ❌ **Integration**: เชื่อมต่อกับ Avatar และ OpenAI Chat
+3. ⚠️ **Integration**: เชื่อมต่อกับ Avatar และ OpenAI Chat - **ยังไม่ได้ทำ**
 
 ### Architecture
 
@@ -331,9 +337,11 @@ Phase 4 จะใช้ ElevenLabs Scribe **real-time streaming** ทำให�
        └─→ committed_transcript (พูดเสร็จ)
 ```
 
-### TASK 4.1: สร้าง API Endpoint สำหรับ Single-Use Token
+### TASK 4.1: สร้าง API Endpoint สำหรับ Single-Use Token ✅ สำเร็จแล้ว
 
-**สร้างไฟล์ใหม่:** `apps/demo/app/api/elevenlabs-stt-token/route.ts`
+**Status:** ✅ **สำเร็จแล้ว** - API endpoint พร้อมใช้งาน
+
+**ไฟล์ที่สร้าง:** `apps/demo/app/api/elevenlabs-stt-token/route.ts` ✅
 
 ```typescript
 import { NextResponse } from 'next/server';
@@ -368,9 +376,21 @@ export async function POST() {
 }
 ```
 
-**Testing:**
+**การทดสอบ:**
+
+1. **ด้วย HTML Test Page (แนะนำ):**
 ```bash
-# Test with Postman
+# รันโปรเจ็ค
+pnpm dev
+
+# เปิด test page
+http://localhost:3000/test-elevenlabs-stt-token.html
+
+# คลิก "Generate Token" → ดูผลลัพธ์และ countdown
+```
+
+2. **ด้วย Postman:**
+```bash
 POST http://localhost:3000/api/elevenlabs-stt-token
 
 # Expected Response:
@@ -379,6 +399,12 @@ POST http://localhost:3000/api/elevenlabs-stt-token
   "expires_at": "2025-01-15T10:30:00Z"
 }
 ```
+
+**สิ่งที่ได้:**
+- ✅ API endpoint ที่สร้าง single-use token
+- ✅ Token หมดอายุอัตโนมัติใน 15 นาที
+- ✅ HTML test page พร้อม countdown timer
+- ✅ รักษา API key ไว้บน backend (ปลอดภัย)
 
 ---
 
