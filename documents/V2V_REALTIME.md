@@ -1,30 +1,86 @@
 # Voice-to-Voice Real-time Communication System
 **HeyGen LiveAvatar + OpenAI + ElevenLabs Integration**
 
+---
+
+## 📊 IMPLEMENTATION STATUS SUMMARY
+
+### ระดับความพร้อม: **70% พร้อมใช้งาน** ✅
+
+| Phase | Status | Progress | Ready for Production |
+|-------|--------|----------|---------------------|
+| **Phase 1**: Session Management | ✅ สำเร็จ | 100% | ✅ YES |
+| **Phase 2**: Voice Chat (FULL) | ✅ สำเร็จ | 100% | ✅ YES |
+| **Phase 3**: Custom Voice Chat | ✅ สำเร็จ | 100% | ✅ YES |
+| **Phase 4**: Realtime STT | ⚠️ ยังไม่สำเร็จ | 0% | ❌ NO |
+| **Phase 5**: WebSocket Chat | ⚠️ ยังไม่สำเร็จ | 0% | ❌ NO |
+| **Phase 6**: WebSocket TTS | ⚠️ ยังไม่สำเร็จ | 0% | ❌ NO |
+
+### สิ่งที่พร้อมใช้งาน (Production Ready)
+
+✅ **โหมด FULL** - Voice-to-Voice สมบูรณ์ด้วย HeyGen built-in AI
+- Latency: ~1-2 วินาที
+- ใช้งานได้ทันที
+
+✅ **โหมด CUSTOM + REST APIs** - Voice-to-Voice แบบปรับแต่งได้
+- Pipeline: User Speech → Whisper STT → OpenAI Chat → ElevenLabs TTS → Avatar
+- Latency: ~3-5 วินาที
+- ปรับแต่ง AI และเสียงได้เต็มที่
+
+### สิ่งที่ยังต้องพัฒนา (Need Implementation)
+
+⚠️ **Phase 4-6**: Real-time WebSocket Features
+- ElevenLabs Realtime STT (ไม่มี API endpoint และ Hook)
+- WebSocket Chat Server (ไม่มี Custom Server)
+- WebSocket Streaming TTS (ไม่มี Custom Server)
+- Total Effort: ~18-25 ชั่วโมง
+
+### การใช้งานปัจจุบัน
+
+**สำหรับโปรเจ็คที่ยอมรับ Latency 3-5 วินาที:**
+```bash
+pnpm dev
+# เปิด http://localhost:3000
+# เลือก CUSTOM mode → ใช้งานได้เลย
+```
+
+**สำหรับโปรเจ็คที่ต้องการ Real-time (<1 วินาที):**
+- ต้องทำ Phase 4-6 ให้เสร็จก่อน
+- ดูรายละเอียดด้านล่าง
+
+---
+
 ## สรุปหลักการทำงาน
 
 โปรเจ็คนี้เป็นระบบสนทนา Voice-to-Voice แบบ Real-time ที่ใช้ HeyGen LiveAvatar เป็น Avatar หลัก โดยรองรับ 2 โหมด:
 
-### โหมด FULL
+### โหมด FULL ✅ (พร้อมใช้งาน)
 - HeyGen จัดการทุกอย่าง (STT, AI, TTS, Lip-sync)
 - เหมาะสำหรับการใช้งานที่ต้องการความง่ายและรวดเร็ว
+- Latency: 1-2 วินาที
 
-### โหมด CUSTOM
+### โหมด CUSTOM ✅ (พร้อมใช้งาน)
 - ผู้ใช้ควบคุม AI (OpenAI GPT) และ TTS (ElevenLabs)
 - HeyGen ทำหน้าที่แค่ Video Streaming และ Lip-sync
 - เหมาะสำหรับการปรับแต่งบุคลิกภาพและเสียงของ Avatar
+- Latency: 3-5 วินาที (REST APIs)
+
+### โหมด CUSTOM + WebSocket ⚠️ (ยังไม่พร้อม - ต้องพัฒนา Phase 4-6)
+- ใช้ WebSocket แทน REST APIs
+- Latency: <1 วินาที (Real-time streaming)
+- ต้องการ Custom WebSocket Server
 
 ## เทคโนโลยีหลักที่ใช้
 
-| บริการ | หน้าที่ | เอกสาร |
-|--------|---------|---------|
-| **HeyGen LiveAvatar** | Video Streaming, Lip-sync Animation | https://api.liveavatar.com |
-| **OpenAI Whisper** | Speech-to-Text (CUSTOM mode) | https://platform.openai.com/docs/guides/speech-to-text |
-| **OpenAI GPT-4** | AI Conversation (CUSTOM mode) | https://platform.openai.com/docs/guides/chat |
-| **ElevenLabs** | Text-to-Speech (CUSTOM mode) | https://elevenlabs.io/docs |
-| **ElevenLabs Scribe** | Real-time Speech-to-Text | https://elevenlabs.io/docs/cookbooks/speech-to-text/streaming |
-| **LiveKit** | WebRTC Video Streaming | https://docs.livekit.io |
-| **WebSocket** | Real-time Command/Event Communication | - |
+| บริการ | หน้าที่ | Implementation Status | เอกสาร |
+|--------|---------|---------------------|---------|
+| **HeyGen LiveAvatar** | Video Streaming, Lip-sync Animation | ✅ พร้อมใช้งาน | https://api.liveavatar.com |
+| **OpenAI Whisper** | Speech-to-Text (CUSTOM mode) | ✅ พร้อมใช้งาน | https://platform.openai.com/docs/guides/speech-to-text |
+| **OpenAI GPT-4** | AI Conversation (CUSTOM mode) | ✅ พร้อมใช้งาน | https://platform.openai.com/docs/guides/chat |
+| **ElevenLabs** | Text-to-Speech (CUSTOM mode) | ✅ พร้อมใช้งาน | https://elevenlabs.io/docs |
+| **ElevenLabs Scribe** | Real-time Speech-to-Text | ⚠️ ยังไม่ได้ใช้งาน | https://elevenlabs.io/docs/cookbooks/speech-to-text/streaming |
+| **LiveKit** | WebRTC Video Streaming | ✅ พร้อมใช้งาน | https://docs.livekit.io |
+| **WebSocket** | Real-time Command/Event Communication | ⚠️ ใช้บางส่วน (HeyGen) | - |
 
 ## วิธีการรันโปรเจ็ค
 
@@ -43,16 +99,16 @@ pnpm install
 สร้างไฟล์ `.env.local` ใน `apps/demo/`:
 
 ```env
-# HeyGen LiveAvatar
+# HeyGen LiveAvatar (จำเป็น)
 LIVEAVATAR_API_KEY=your_heygen_api_key
 LIVEAVATAR_AVATAR_ID=dd73ea75-1218-4ef3-92ce-606d5f7fbc0a
 
-# สำหรับ FULL mode
+# สำหรับ FULL mode (optional)
 LIVEAVATAR_VOICE_ID=your_voice_id
 LIVEAVATAR_CONTEXT_ID=your_context_id
 LIVEAVATAR_LANGUAGE=en
 
-# สำหรับ CUSTOM mode
+# สำหรับ CUSTOM mode (จำเป็น)
 OPENAI_API_KEY=your_openai_api_key
 ELEVENLABS_API_KEY=your_elevenlabs_api_key
 ELEVENLABS_VOICE_ID=pqHfZKP75CvOlQylNhV4
@@ -78,598 +134,208 @@ pnpm build
 
 # IMPLEMENTATION FLOW
 
-## PHASE 1: Session Management
+## PHASE 1: Session Management ✅ พร้อมใช้งาน
 
-### TASK 1.1: เริ่มต้น Session (FULL Mode)
+**Status:** ✅ สำเร็จแล้ว - ทำงานได้ทั้ง FULL และ CUSTOM mode
 
-**Step 1.1.1: สร้าง Session Token**
+### การทำงาน
 
-```typescript
-// API: POST /api/start-session
-// File: apps/demo/app/api/start-session/route.ts
+Phase นี้จัดการ Session lifecycle ทั้งหมด:
 
-// Request
-POST /api/start-session
-Content-Type: application/json
+1. **Start Session (FULL/CUSTOM Mode)** - สร้าง session token จาก HeyGen API
+   - FULL Mode: มี avatar_persona (voice_id, context_id, language)
+   - CUSTOM Mode: ไม่มี avatar_persona (ควบคุมเอง)
 
-// Response
-{
-  "session_token": "eyJhbGci...",
-  "session_id": "abc123..."
-}
-```
+2. **Keep Session Alive** - ต่ออายุ session ทุก 5 นาที (ป้องกัน timeout)
 
-**Backend Logic:**
-```typescript
-const response = await fetch(`${LIVEAVATAR_API_URL}/v1/sessions/token`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-KEY': LIVEAVATAR_API_KEY,
-  },
-  body: JSON.stringify({
-    mode: "FULL",
-    avatar_id: LIVEAVATAR_AVATAR_ID,
-    avatar_persona: {
-      voice_id: LIVEAVATAR_VOICE_ID,
-      context_id: LIVEAVATAR_CONTEXT_ID,
-      language: LIVEAVATAR_LANGUAGE
-    }
-  })
-});
-```
+3. **Stop Session** - ปิด session และ cleanup resources
 
-**Step 1.1.2: เริ่มต้น LiveKit Session**
+4. **WebSocket Connection** - เชื่อมต่อ WebSocket สำหรับ CUSTOM mode (ส่งคำสั่งควบคุม Avatar)
 
-```typescript
-// Frontend: apps/demo/src/liveavatar/useSession.ts
+### Files Implemented
 
-const session = new LiveAvatarSession();
+- API: `apps/demo/app/api/start-session/route.ts` ✅
+- API: `apps/demo/app/api/start-custom-session/route.ts` ✅
+- API: `apps/demo/app/api/keep-session-alive/route.ts` ✅
+- API: `apps/demo/app/api/stop-session/route.ts` ✅
+- Hook: `apps/demo/src/liveavatar/useSession.ts` ✅
 
-await session.start({
-  sessionToken: session_token,
-  serverUrl: "https://api.liveavatar.com"
-});
-```
+### การทดสอบ
 
-**Step 1.1.3: เชื่อมต่อ Video Element**
+```bash
+# 1. ทดสอบด้วย Postman
+POST http://localhost:3000/api/start-session
 
-```typescript
-// Wait for stream ready
-session.on(SessionEventsEnum.SESSION_STREAM_READY, () => {
-  const videoElement = document.querySelector('video');
-  session.attach(videoElement);
-});
-```
+# 2. ทดสอบด้วย HTML (Optional)
+# สร้างไฟล์: public/test-session-lifecycle.html
+# เปิด: http://localhost:3000/test-session-lifecycle.html
 
-### TASK 1.2: เริ่มต้น Session (CUSTOM Mode)
-
-**Step 1.2.1: สร้าง Session Token**
-
-```typescript
-// API: POST /api/start-custom-session
-// File: apps/demo/app/api/start-custom-session/route.ts
-
-POST /api/start-custom-session
-
-// Response
-{
-  "session_token": "eyJhbGci...",
-  "session_id": "abc123..."
-}
-```
-
-**Backend Logic:**
-```typescript
-const response = await fetch(`${LIVEAVATAR_API_URL}/v1/sessions/token`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-KEY': LIVEAVATAR_API_KEY,
-  },
-  body: JSON.stringify({
-    mode: "CUSTOM",
-    avatar_id: LIVEAVATAR_AVATAR_ID
-  })
-});
-```
-
-**Step 1.2.2: เชื่อมต่อ WebSocket**
-
-```typescript
-// SDK: packages/js-sdk/src/LiveAvatarSession/LiveAvatarSession.ts:317-397
-
-const startResponse = await fetch(`${serverUrl}/v1/sessions/start`, {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${sessionToken}`
-  }
-});
-
-const { ws_url, livekit_url, livekit_client_token } = await startResponse.json();
-
-// Connect WebSocket for commands
-this._sessionEventSocket = new WebSocket(ws_url);
-
-this._sessionEventSocket.onopen = () => {
-  console.log('WebSocket connected');
-};
-
-this._sessionEventSocket.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  handleServerEvent(message);
-};
-```
-
-### TASK 1.3: รักษา Session ให้ทำงานต่อ
-
-**Step 1.3.1: Keep-Alive ทุก 5 นาที**
-
-```typescript
-// API: POST /api/keep-session-alive
-
-POST /api/keep-session-alive
-Content-Type: application/json
-
-{
-  "session_token": "eyJhbGci..."
-}
-```
-
-**Frontend Implementation:**
-```typescript
-// Set interval to keep session alive
-setInterval(async () => {
-  await fetch('/api/keep-session-alive', {
-    method: 'POST',
-    body: JSON.stringify({ session_token })
-  });
-}, 5 * 60 * 1000); // Every 5 minutes
-```
-
-### TASK 1.4: หยุด Session
-
-**Step 1.4.1: ปิด Session**
-
-```typescript
-// API: POST /api/stop-session
-
-POST /api/stop-session
-Content-Type: application/json
-
-{
-  "session_token": "eyJhbGci..."
-}
-```
-
-**Frontend:**
-```typescript
-await session.stop();
-await fetch('/api/stop-session', {
-  method: 'POST',
-  body: JSON.stringify({ session_token })
-});
+# 3. ทดสอบในแอพหลัก
+pnpm dev
+# เปิด http://localhost:3000 → Start Session
 ```
 
 ---
 
-## PHASE 2: Voice Chat (FULL Mode)
+## PHASE 2: Voice Chat (FULL Mode) ✅ พร้อมใช้งาน
 
-### TASK 2.1: เริ่มต้น Voice Chat
+**Status:** ✅ สำเร็จแล้ว - ใช้งานได้เต็มรูปแบบ
 
-**Step 2.1.1: เข้าถึง Microphone**
+### การทำงาน
 
-```typescript
-// File: apps/demo/src/liveavatar/useVoiceChat.ts
+FULL Mode ใช้ HeyGen จัดการ Voice Chat ทั้งหมด:
 
-const stream = await navigator.mediaDevices.getUserMedia({
-  audio: {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true
-  }
-});
+1. **Voice Chat Start** - เริ่มต้น voice chat พร้อม microphone access
+2. **Real-time STT** - HeyGen แปลงเสียงเป็นข้อความ
+3. **AI Response** - HeyGen generate คำตอบด้วย built-in AI
+4. **TTS & Lip-sync** - HeyGen สร้างเสียงและทำ lip-sync
+5. **Microphone Control** - Mute/Unmute/Stop
+
+### Flow
+
+```
+User Speaks → HeyGen STT → HeyGen AI → HeyGen TTS → Avatar Speaks
+           (All handled by HeyGen internally)
 ```
 
-**Step 2.1.2: เริ่ม Voice Chat**
+### Files Implemented
 
-```typescript
-await session.voiceChat.start();
+- Hook: `apps/demo/src/liveavatar/useVoiceChat.ts` ✅
+- Component: `apps/demo/src/components/LiveAvatarSession.tsx` ✅
 
-// Voice chat state changes
-session.voiceChat.on(VoiceChatEventsEnum.STATE_CHANGED, (state) => {
-  console.log('Voice chat state:', state);
-  // States: IDLE, STARTING, ACTIVE, STOPPING
-});
-```
+### การทดสอบ
 
-### TASK 2.2: รับฟัง User Transcription
-
-```typescript
-session.on(AgentEventsEnum.USER_SPEAK_STARTED, () => {
-  console.log('User started speaking');
-});
-
-session.on(AgentEventsEnum.USER_TRANSCRIPTION, (data) => {
-  console.log('User said:', data.text);
-  // data = { text: string, is_final: boolean }
-});
-
-session.on(AgentEventsEnum.USER_SPEAK_ENDED, () => {
-  console.log('User stopped speaking');
-});
-```
-
-### TASK 2.3: รับฟัง Avatar Response
-
-```typescript
-session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, () => {
-  console.log('Avatar started speaking');
-});
-
-session.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, (data) => {
-  console.log('Avatar said:', data.text);
-});
-
-session.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, () => {
-  console.log('Avatar stopped speaking');
-});
-```
-
-### TASK 2.4: ควบคุม Microphone
-
-```typescript
-// Mute microphone
-await session.voiceChat.mute();
-
-session.voiceChat.on(VoiceChatEventsEnum.MUTED, () => {
-  console.log('Microphone muted');
-});
-
-// Unmute microphone
-await session.voiceChat.unmute();
-
-session.voiceChat.on(VoiceChatEventsEnum.UNMUTED, () => {
-  console.log('Microphone unmuted');
-});
-
-// Stop voice chat
-await session.voiceChat.stop();
+```bash
+pnpm dev
+# เปิด http://localhost:3000
+# 1. เลือก "FULL Mode"
+# 2. กด "Start Session"
+# 3. กด "Start Voice Chat"
+# 4. พูดอะไรก็ได้ → Avatar ควรตอบกลับ
 ```
 
 ---
 
-## PHASE 3: Custom Voice Chat (CUSTOM Mode)
+## PHASE 3: Custom Voice Chat (CUSTOM Mode) ✅ พร้อมใช้งาน
 
-### TASK 3.1: บันทึกเสียงจาก Microphone
+**Status:** ✅ สำเร็จแล้ว - ใช้งานได้เต็มรูปแบบ
 
-**Step 3.1.1: สร้าง AudioContext**
+### การทำงาน
 
-```typescript
-// File: apps/demo/src/liveavatar/useCustomVoiceChat.ts
+CUSTOM Mode ให้ผู้ใช้ควบคุม AI และ TTS เอง:
 
-const audioContext = new AudioContext({
-  sampleRate: 16000  // 16kHz for Whisper
-});
+1. **Audio Recording** - บันทึกเสียงด้วย Web Audio API (AudioWorklet)
+2. **Speech-to-Text** - OpenAI Whisper แปลงเสียงเป็นข้อความ (batch)
+3. **AI Chat** - OpenAI GPT-4o-mini generate คำตอบ
+4. **Text-to-Speech** - ElevenLabs สร้างเสียง (PCM 24kHz)
+5. **Avatar Lip-sync** - ส่งเสียงไป HeyGen ผ่าน WebSocket (chunks 20ms)
+
+### Flow
+
+```
+User Speaks → AudioWorklet → Whisper STT → OpenAI Chat → ElevenLabs TTS → Avatar Speaks
+                                                                            (WebSocket chunks)
 ```
 
-**Step 3.1.2: โหลด AudioWorklet Processor**
+### Files Implemented
 
-```typescript
-// Load audio processor
-await audioContext.audioWorklet.addModule('/audio-processor.js');
+- Hook: `apps/demo/src/liveavatar/useCustomVoiceChat.ts` ✅
+- Hook: `apps/demo/src/liveavatar/useTextChat.ts` ✅
+- API: `apps/demo/app/api/openai-whisper-stt/route.ts` ✅
+- API: `apps/demo/app/api/openai-chat-complete/route.ts` ✅
+- API: `apps/demo/app/api/elevenlabs-text-to-speech/route.ts` ✅
+- Audio Processor: `apps/demo/public/audio-processor.js` ✅
+- SDK: `packages/js-sdk/src/audio_utils.ts` ✅
 
-// Create worklet node
-const workletNode = new AudioWorkletNode(
-  audioContext,
-  'audio-recorder-processor'
-);
+### การทดสอบ
+
+```bash
+pnpm dev
+# เปิด http://localhost:3000
+# 1. เลือก "CUSTOM Mode"
+# 2. กด "Start Session"
+# 3. กด "Start Recording" (Push-to-talk)
+# 4. พูดอะไรก็ได้
+# 5. กด "Stop Recording"
+# 6. ระบบจะ: STT → AI → TTS → Avatar พูด
 ```
 
-**Step 3.1.3: รับ Audio Chunks**
+### API Testing
 
-```typescript
-const audioBuffers: Float32Array[] = [];
+```bash
+# Test Whisper STT
+POST http://localhost:3000/api/openai-whisper-stt
+Content-Type: multipart/form-data
+Body: audio file
 
-workletNode.port.onmessage = (event) => {
-  if (event.data.type === 'audioData') {
-    audioBuffers.push(new Float32Array(event.data.data));
-  }
-};
-```
+# Test OpenAI Chat
+POST http://localhost:3000/api/openai-chat-complete
+Content-Type: application/json
+Body: {"message": "สวัสดีครับ"}
 
-**Step 3.1.4: เชื่อมต่อ Microphone**
-
-```typescript
-const stream = await navigator.mediaDevices.getUserMedia({
-  audio: {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true
-  }
-});
-
-const source = audioContext.createMediaStreamSource(stream);
-source.connect(workletNode);
-workletNode.connect(audioContext.destination);
-```
-
-### TASK 3.2: แปลงเสียงเป็นข้อความ (OpenAI Whisper)
-
-**Step 3.2.1: หยุดบันทึกและรวม Audio Chunks**
-
-```typescript
-// Stop recording
-workletNode.port.postMessage({ type: 'stop' });
-
-// Combine all chunks
-const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
-const combinedBuffer = new Float32Array(totalLength);
-let offset = 0;
-for (const buffer of audioBuffers) {
-  combinedBuffer.set(buffer, offset);
-  offset += buffer.length;
-}
-```
-
-**Step 3.2.2: แปลง Float32Array เป็น WAV**
-
-```typescript
-function pcmToWav(pcmData: Float32Array, sampleRate: number): Blob {
-  const wavHeader = new ArrayBuffer(44);
-  const view = new DataView(wavHeader);
-
-  // WAV header
-  const writeString = (offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + pcmData.length * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // Mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, pcmData.length * 2, true);
-
-  // Convert Float32 to Int16
-  const pcm16 = new Int16Array(pcmData.length);
-  for (let i = 0; i < pcmData.length; i++) {
-    const s = Math.max(-1, Math.min(1, pcmData[i]));
-    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-  }
-
-  return new Blob([wavHeader, pcm16.buffer], { type: 'audio/wav' });
-}
-
-const wavBlob = pcmToWav(combinedBuffer, 16000);
-```
-
-**Step 3.2.3: ส่งไปยัง OpenAI Whisper**
-
-```typescript
-// API: POST /api/openai-whisper-stt
-// File: apps/demo/app/api/openai-whisper-stt/route.ts
-
-const formData = new FormData();
-formData.append('audio', wavBlob, 'audio.wav');
-
-const response = await fetch('/api/openai-whisper-stt', {
-  method: 'POST',
-  body: formData
-});
-
-const { transcript } = await response.json();
-console.log('Transcript:', transcript);
-```
-
-**Backend (Whisper API):**
-```typescript
-const formData = new FormData();
-formData.append('file', audioBlob, 'audio.wav');
-formData.append('model', 'whisper-1');
-formData.append('language', 'th'); // or 'en'
-
-const response = await fetch(`${OPENAI_BASE_URL}/audio/transcriptions`, {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${OPENAI_API_KEY}`
-  },
-  body: formData
-});
-
-const { text } = await response.json();
-```
-
-### TASK 3.3: สร้างคำตอบด้วย OpenAI Chat
-
-**Step 3.3.1: เรียก OpenAI Chat Completion API**
-
-```typescript
-// API: POST /api/openai-chat-complete
-// File: apps/demo/app/api/openai-chat-complete/route.ts
-
-const response = await fetch('/api/openai-chat-complete', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    message: transcript,
-    model: 'gpt-4o-mini',
-    system_prompt: 'You are a helpful Thai-speaking assistant.'
-  })
-});
-
-const { response: aiResponse } = await response.json();
-```
-
-**Backend:**
-```typescript
-const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${OPENAI_API_KEY}`
-  },
-  body: JSON.stringify({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: systemPrompt || 'You are a helpful assistant.'
-      },
-      {
-        role: 'user',
-        content: message
-      }
-    ]
-  })
-});
-
-const data = await chatResponse.json();
-const responseText = data.choices[0].message.content;
-```
-
-### TASK 3.4: แปลงข้อความเป็นเสียง (ElevenLabs TTS)
-
-**Step 3.4.1: เรียก ElevenLabs API**
-
-```typescript
-// API: POST /api/elevenlabs-text-to-speech
-// File: apps/demo/app/api/elevenlabs-text-to-speech/route.ts
-
-const response = await fetch('/api/elevenlabs-text-to-speech', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    text: aiResponse,
-    voice_id: 'pqHfZKP75CvOlQylNhV4', // Bill - Thai voice
-    model_id: 'eleven_v3'
-  })
-});
-
-const { audio } = await response.json();
-// audio = base64 PCM 24000Hz
-```
-
-**Backend:**
-```typescript
-const ttsResponse = await fetch(
-  `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'xi-api-key': ELEVENLABS_API_KEY
-    },
-    body: JSON.stringify({
-      text: text,
-      model_id: 'eleven_v3',
-      output_format: 'pcm_24000'
-    })
-  }
-);
-
-const audioBuffer = await ttsResponse.arrayBuffer();
-const base64Audio = Buffer.from(audioBuffer).toString('base64');
-```
-
-### TASK 3.5: ส่งเสียงไปยัง Avatar ผ่าน WebSocket
-
-**Step 3.5.1: แบ่ง Audio เป็น Chunks (20ms)**
-
-```typescript
-// File: packages/js-sdk/src/audio_utils.ts
-
-function splitPcm24kStringToChunks(pcmBase64: string): string[] {
-  const BYTES_PER_20MS = 960; // 480 samples * 2 bytes at 24kHz
-  const chunks: string[] = [];
-
-  for (let i = 0; i < pcmBase64.length; i += BYTES_PER_20MS) {
-    chunks.push(pcmBase64.slice(i, i + BYTES_PER_20MS));
-  }
-
-  return chunks;
-}
-
-const audioChunks = splitPcm24kStringToChunks(audio);
-```
-
-**Step 3.5.2: ส่ง Audio Chunks ผ่าน WebSocket**
-
-```typescript
-// File: packages/js-sdk/src/LiveAvatarSession/LiveAvatarSession.ts:612-642
-
-const eventId = generateUUID();
-
-// Send chunks sequentially
-for (const chunk of audioChunks) {
-  const message = {
-    type: 'agent.speak',
-    event_id: eventId,
-    audio: chunk
-  };
-
-  this._sessionEventSocket?.send(JSON.stringify(message));
-
-  // Wait a bit between chunks (optional)
-  await new Promise(resolve => setTimeout(resolve, 20));
-}
-
-// Signal end of audio
-const endMessage = {
-  type: 'agent.speak_end',
-  event_id: eventId
-};
-
-this._sessionEventSocket?.send(JSON.stringify(endMessage));
-```
-
-**Step 3.5.3: รับ Events จาก Server**
-
-```typescript
-this._sessionEventSocket.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-
-  switch (message.type) {
-    case 'agent.speak_started':
-      // Avatar เริ่มพูด
-      this.emit(AgentEventsEnum.AVATAR_SPEAK_STARTED);
-      break;
-
-    case 'agent.speak_ended':
-      // Avatar พูดจบ
-      this.emit(AgentEventsEnum.AVATAR_SPEAK_ENDED);
-      break;
-
-    default:
-      console.log('Received event:', message);
-  }
-};
+# Test ElevenLabs TTS
+POST http://localhost:3000/api/elevenlabs-text-to-speech
+Content-Type: application/json
+Body: {"text": "สวัสดีครับ"}
 ```
 
 ---
 
-## PHASE 4: ElevenLabs Realtime Speech-to-Text Integration
+## PHASE 4: ElevenLabs Realtime Speech-to-Text Integration ⚠️ ยังไม่ได้ทำ
+
+**Status:** ⚠️ **ยังไม่ได้ Implement** - ต้องทำใหม่ทั้งหมด
+**Estimated Effort:** 4-6 ชั่วโมง
+
+### ทำไมต้องมี Phase นี้?
+
+Phase 3 ใช้ OpenAI Whisper แบบ **batch** (ต้องรอบันทึกเสียงเสร็จก่อน) ทำให้มี latency สูง (3-5 วินาที)
+
+Phase 4 จะใช้ ElevenLabs Scribe **real-time streaming** ทำให้:
+- ✅ มี partial transcripts (เห็นข้อความแบบ real-time ขณะพูด)
+- ✅ ลด latency เหลือ <500ms
+- ✅ ประสบการณ์ดีกว่า (ไม่ต้องรอ)
+
+### สิ่งที่ยังต้องสร้าง
+
+1. ❌ **API Endpoint**: `/api/elevenlabs-stt-token`
+   - Generate single-use token สำหรับ WebSocket authentication
+   - Token หมดอายุใน 15 นาที
+
+2. ❌ **React Hook**: `apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts`
+   - Connect WebSocket to ElevenLabs Scribe API
+   - Stream audio จาก microphone
+   - Handle partial/final transcripts
+
+3. ❌ **Integration**: เชื่อมต่อกับ Avatar และ OpenAI Chat
+
+### Architecture
+
+```
+┌──────────────┐
+│ Microphone   │
+└──────┬───────┘
+       │ (Web Audio API)
+       ▼
+┌──────────────────────┐
+│ AudioWorklet         │
+│ (PCM 16kHz)          │
+└──────┬───────────────┘
+       │ (Real-time chunks)
+       ▼
+┌──────────────────────────────┐
+│ ElevenLabs WebSocket         │ ← wss://api.elevenlabs.io/v1/speech-to-text/realtime
+│ (Scribe v2 Realtime)         │
+└──────┬───────────────────────┘
+       │
+       ├─→ partial_transcript (ขณะพูด)
+       └─→ committed_transcript (พูดเสร็จ)
+```
 
 ### TASK 4.1: สร้าง API Endpoint สำหรับ Single-Use Token
 
-**Step 4.1.1: สร้าง Token Generation Endpoint**
+**สร้างไฟล์ใหม่:** `apps/demo/app/api/elevenlabs-stt-token/route.ts`
 
 ```typescript
-// สร้างไฟล์ใหม่: apps/demo/app/api/elevenlabs-stt-token/route.ts
-
 import { NextResponse } from 'next/server';
 import { ELEVENLABS_API_KEY } from '../secrets';
 
@@ -679,9 +345,7 @@ export async function POST() {
       'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
       {
         method: 'POST',
-        headers: {
-          'xi-api-key': ELEVENLABS_API_KEY
-        }
+        headers: { 'xi-api-key': ELEVENLABS_API_KEY }
       }
     );
 
@@ -690,7 +354,6 @@ export async function POST() {
     }
 
     const data = await response.json();
-
     return NextResponse.json({
       token: data.token,
       expires_at: data.expires_at
@@ -705,13 +368,25 @@ export async function POST() {
 }
 ```
 
-### TASK 4.2: สร้าง WebSocket Client สำหรับ Realtime STT
+**Testing:**
+```bash
+# Test with Postman
+POST http://localhost:3000/api/elevenlabs-stt-token
 
-**Step 4.2.1: สร้าง Hook สำหรับ Realtime STT**
+# Expected Response:
+{
+  "token": "eyJhbGci...",
+  "expires_at": "2025-01-15T10:30:00Z"
+}
+```
+
+---
+
+### TASK 4.2: สร้าง React Hook สำหรับ Realtime STT
+
+**สร้างไฟล์ใหม่:** `apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts`
 
 ```typescript
-// สร้างไฟล์ใหม่: apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts
-
 import { useState, useRef, useCallback } from 'react';
 
 interface RealtimeSTTConfig {
@@ -733,28 +408,26 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Connect to WebSocket
   const connect = useCallback(async () => {
     try {
-      // Get token from backend
+      // 1. Get token from backend
       const tokenRes = await fetch('/api/elevenlabs-stt-token', {
         method: 'POST'
       });
       const { token } = await tokenRes.json();
 
-      // Build WebSocket URL
+      // 2. Build WebSocket URL
       const params = new URLSearchParams({
         model_id: 'scribe_v2_realtime',
-        language_code: config.language || 'th', // Thai
+        language_code: config.language || 'th',
         audio_format: `pcm_${config.sampleRate || 16000}`,
         commit_strategy: 'vad', // Auto-commit on silence
         vad_silence_threshold_secs: '1.0',
         vad_threshold: '0.5'
       });
-
       const wsUrl = `wss://api.elevenlabs.io/v1/speech-to-text/realtime?${params}`;
 
-      // Connect WebSocket
+      // 3. Connect WebSocket
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -774,7 +447,7 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
 
         switch (message.message_type) {
           case 'session_started':
-            console.log('Session started:', message);
+            console.log('Session started');
             break;
 
           case 'partial_transcript':
@@ -785,7 +458,7 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
           case 'committed_transcript':
             setFinalText(prev => prev + ' ' + message.text);
             config.onFinalTranscript?.(message.text);
-            setPartialText(''); // Clear partial
+            setPartialText('');
             break;
 
           case 'auth_error':
@@ -813,7 +486,6 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
     }
   }, [config]);
 
-  // Start recording and streaming
   const startRecording = useCallback(async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       await connect();
@@ -851,7 +523,7 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(workletNode);
 
-      // Handle audio chunks
+      // Handle audio chunks - Send to ElevenLabs
       workletNode.port.onmessage = (event) => {
         if (event.data.type === 'audioData' && wsRef.current) {
           const pcmData = new Float32Array(event.data.data);
@@ -886,15 +558,12 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
     }
   }, [connect, config]);
 
-  // Stop recording
   const stopRecording = useCallback(() => {
-    // Stop audio stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
 
-    // Disconnect audio nodes
     if (workletNodeRef.current) {
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
@@ -908,7 +577,6 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
     setIsRecording(false);
   }, []);
 
-  // Disconnect WebSocket
   const disconnect = useCallback(() => {
     stopRecording();
 
@@ -920,18 +588,6 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
     setIsConnected(false);
   }, [stopRecording]);
 
-  // Manual commit (if using manual strategy)
-  const commit = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        message_type: 'input_audio_chunk',
-        audio_base_64: '',
-        commit: true,
-        sample_rate: config.sampleRate || 16000
-      }));
-    }
-  }, [config.sampleRate]);
-
   return {
     isConnected,
     isRecording,
@@ -940,35 +596,32 @@ export function useElevenLabsRealtimeSTT(config: RealtimeSTTConfig = {}) {
     connect,
     disconnect,
     startRecording,
-    stopRecording,
-    commit
+    stopRecording
   };
 }
 ```
 
-**Step 4.2.2: ใช้งาน Hook ในหน้าเว็บ**
+---
+
+### TASK 4.3: Integration กับ Avatar
+
+**ใช้งาน Hook ใน Component:**
 
 ```typescript
-// ในไฟล์ Component (เช่น apps/demo/src/components/LiveAvatarSession.tsx)
+// ใน LiveAvatarSession component
 
 import { useElevenLabsRealtimeSTT } from '../liveavatar/useElevenLabsRealtimeSTT';
 
 function LiveAvatarSession() {
-  const {
-    isConnected,
-    isRecording,
-    partialText,
-    finalText,
-    connect,
-    disconnect,
-    startRecording,
-    stopRecording
-  } = useElevenLabsRealtimeSTT({
-    language: 'th', // Thai
+  const stt = useElevenLabsRealtimeSTT({
+    language: 'th',
     sampleRate: 16000,
+
     onPartialTranscript: (text) => {
+      // แสดง real-time transcript
       console.log('Partial:', text);
     },
+
     onFinalTranscript: async (text) => {
       console.log('Final:', text);
 
@@ -991,6 +644,7 @@ function LiveAvatarSession() {
       // ส่งไปยัง Avatar
       sessionRef.current?.repeatAudio(audio);
     },
+
     onError: (error) => {
       console.error('STT Error:', error);
     }
@@ -998,126 +652,117 @@ function LiveAvatarSession() {
 
   return (
     <div>
-      <button onClick={connect} disabled={isConnected}>
-        Connect STT
-      </button>
-      <button onClick={disconnect} disabled={!isConnected}>
-        Disconnect STT
-      </button>
-      <button onClick={startRecording} disabled={!isConnected || isRecording}>
-        Start Recording
-      </button>
-      <button onClick={stopRecording} disabled={!isRecording}>
-        Stop Recording
-      </button>
+      <button onClick={stt.connect}>Connect STT</button>
+      <button onClick={stt.startRecording}>Start Recording</button>
+      <button onClick={stt.stopRecording}>Stop Recording</button>
+      <button onClick={stt.disconnect}>Disconnect</button>
 
-      <div>
-        <p>Status: {isConnected ? 'Connected' : 'Disconnected'}</p>
-        <p>Recording: {isRecording ? 'Yes' : 'No'}</p>
-        <p>Partial: {partialText}</p>
-        <p>Final: {finalText}</p>
-      </div>
+      <div>Partial: {stt.partialText}</div>
+      <div>Final: {stt.finalText}</div>
     </div>
   );
 }
 ```
 
-### TASK 4.3: เชื่อมต่อกับ Avatar WebSocket
+---
 
-**Step 4.3.1: ใช้ Realtime STT + Avatar ร่วมกัน**
+### Testing Phase 4
 
-```typescript
-// Flow: ElevenLabs STT → OpenAI Chat → ElevenLabs TTS → Avatar
+**1. Test Token Generation:**
+```bash
+# Postman
+POST http://localhost:3000/api/elevenlabs-stt-token
 
-function useRealtimeVoiceChat(session: LiveAvatarSession) {
-  const [messages, setMessages] = useState<Array<{role: string, text: string}>>([]);
+# Expected: { "token": "...", "expires_at": "..." }
+```
 
-  const stt = useElevenLabsRealtimeSTT({
-    language: 'th',
-    sampleRate: 16000,
+**2. Test WebSocket Connection:**
+```bash
+# Install wscat
+npm install -g wscat
 
-    onFinalTranscript: async (userText) => {
-      // Add user message
-      setMessages(prev => [...prev, { role: 'user', text: userText }]);
+# Get token
+curl -X POST http://localhost:3000/api/elevenlabs-stt-token
 
-      try {
-        // Get AI response
-        const chatRes = await fetch('/api/openai-chat-complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: userText,
-            system_prompt: 'You are a helpful Thai-speaking assistant.'
-          })
-        });
-        const { response } = await chatRes.json();
+# Connect
+wscat -c "wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&language_code=th&audio_format=pcm_16000&commit_strategy=vad"
 
-        // Add AI message
-        setMessages(prev => [...prev, { role: 'assistant', text: response }]);
+# Send auth
+{"message_type":"auth","token":"your_token_here"}
 
-        // Convert to speech
-        const ttsRes = await fetch('/api/elevenlabs-text-to-speech', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: response,
-            voice_id: 'pqHfZKP75CvOlQylNhV4' // Thai voice
-          })
-        });
-        const { audio } = await ttsRes.json();
+# Expected: {"message_type":"session_started",...}
+```
 
-        // Make avatar speak
-        await session.repeatAudio(audio);
-
-      } catch (error) {
-        console.error('Error in voice chat:', error);
-      }
-    }
-  });
-
-  return {
-    ...stt,
-    messages
-  };
-}
+**3. Test Full Integration:**
+```bash
+pnpm dev
+# เปิด http://localhost:3000
+# เลือก CUSTOM Mode
+# ใช้ Realtime STT button
+# ต้องเห็น partial transcripts แบบ real-time
 ```
 
 ---
 
-## PHASE 5: WebSocket Integration for OpenAI Chat
+## PHASE 5: WebSocket Integration for OpenAI Chat ⚠️ ยังไม่ได้ทำ
 
-### TASK 5.1: สร้าง WebSocket Endpoint สำหรับ OpenAI Chat
+**Status:** ⚠️ **ยังไม่ได้ Implement** - ต้องสร้าง Custom WebSocket Server
+**Estimated Effort:** 5-7 ชั่วโมง
 
-**Step 5.1.1: สร้าง WebSocket Server**
+### ทำไมต้องมี Phase นี้?
 
-```typescript
-// สร้างไฟล์ใหม่: apps/demo/app/api/ws-openai-chat/route.ts
+Phase 3 ใช้ OpenAI Chat แบบ **REST API** (request/response แยกกัน) ทำให้:
+- ❌ ต้อง establish connection ทุกครั้ง (overhead)
+- ❌ ไม่เก็บ conversation history บน server
+- ❌ Latency สูงกว่า WebSocket
 
-import { NextRequest } from 'next/server';
-import { OPENAI_API_KEY } from '../secrets';
+Phase 5 จะใช้ **WebSocket** ทำให้:
+- ✅ Connection คงอยู่ตลอด (persistent connection)
+- ✅ ลด latency (ไม่ต้อง handshake ซ้ำ)
+- ✅ Server จัดการ conversation history
 
-export async function GET(request: NextRequest) {
-  const upgradeHeader = request.headers.get('upgrade');
+### สิ่งที่ยังต้องสร้าง
 
-  if (upgradeHeader !== 'websocket') {
-    return new Response('Expected WebSocket', { status: 426 });
-  }
+1. ❌ **Custom WebSocket Server**: `apps/demo/server/websocket-server.ts`
+2. ❌ **React Hook**: `apps/demo/src/liveavatar/useWebSocketChat.ts`
+3. ❌ **Package Scripts**: อัพเดต `package.json` สำหรับรัน WebSocket server
 
-  // Note: Next.js doesn't support WebSocket natively
-  // ต้องใช้ custom server หรือ external WebSocket server
-  // ตัวอย่างนี้แสดงแนวคิด - ใช้งานจริงต้องใช้ ws library
+**หมายเหตุ:** Next.js ไม่รองรับ WebSocket natively - ต้องสร้าง custom server แยก
 
-  return new Response('WebSocket endpoint - requires custom server', {
-    status: 501
-  });
-}
+### Architecture
+
+```
+┌─────────────┐
+│ React App   │
+│ (Port 3000) │
+└──────┬──────┘
+       │ (WebSocket)
+       ▼
+┌──────────────────────┐
+│ Custom WS Server     │ ← ws://localhost:3001
+│ (Port 3001)          │
+└──────┬───────────────┘
+       │ (HTTP)
+       ▼
+┌──────────────────────┐
+│ OpenAI API           │
+│ (Chat Completions)   │
+└──────────────────────┘
 ```
 
-**Step 5.1.2: สร้าง Custom WebSocket Server**
+### TASK 5.1: ติดตั้ง Dependencies
+
+```bash
+pnpm add -D ws @types/ws tsx concurrently
+```
+
+---
+
+### TASK 5.2: สร้าง Custom WebSocket Server
+
+**สร้างไฟล์ใหม่:** `apps/demo/server/websocket-server.ts`
 
 ```typescript
-// สร้างไฟล์ใหม่: apps/demo/server/websocket-server.ts
-
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 
@@ -1202,11 +847,41 @@ server.listen(3001, () => {
 });
 ```
 
-**Step 5.1.3: สร้าง Hook สำหรับ WebSocket Chat**
+---
+
+### TASK 5.3: อัพเดต package.json
+
+**แก้ไข:** `apps/demo/package.json`
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "ws-server": "tsx server/websocket-server.ts",
+    "dev:full": "concurrently \"pnpm dev\" \"pnpm ws-server\""
+  }
+}
+```
+
+**รัน:**
+```bash
+# Terminal 1: Next.js
+pnpm dev
+
+# Terminal 2: WebSocket server
+pnpm ws-server
+
+# หรือรันพร้อมกัน
+pnpm dev:full
+```
+
+---
+
+### TASK 5.4: สร้าง React Hook
+
+**สร้างไฟล์ใหม่:** `apps/demo/src/liveavatar/useWebSocketChat.ts`
 
 ```typescript
-// สร้างไฟล์ใหม่: apps/demo/src/liveavatar/useWebSocketChat.ts
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface ChatMessage {
@@ -1220,7 +895,6 @@ export function useWebSocketChat(wsUrl: string = 'ws://localhost:3001') {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Connect to WebSocket
   const connect = useCallback(() => {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -1258,7 +932,6 @@ export function useWebSocketChat(wsUrl: string = 'ws://localhost:3001') {
     };
   }, [wsUrl]);
 
-  // Disconnect
   const disconnect = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -1266,7 +939,6 @@ export function useWebSocketChat(wsUrl: string = 'ws://localhost:3001') {
     }
   }, []);
 
-  // Send message
   const sendMessage = useCallback((text: string, systemPrompt?: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket not connected');
@@ -1288,7 +960,6 @@ export function useWebSocketChat(wsUrl: string = 'ws://localhost:3001') {
     }));
   }, []);
 
-  // Reset conversation
   const reset = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -1315,7 +986,7 @@ export function useWebSocketChat(wsUrl: string = 'ws://localhost:3001') {
 }
 ```
 
-**Step 5.1.4: ใช้งานใน Component**
+**ใช้งาน:**
 
 ```typescript
 import { useWebSocketChat } from '../liveavatar/useWebSocketChat';
@@ -1324,31 +995,18 @@ function ChatInterface() {
   const { isConnected, messages, sendMessage, reset } = useWebSocketChat();
   const [input, setInput] = useState('');
 
-  const handleSend = () => {
-    if (input.trim()) {
-      sendMessage(input);
-      setInput('');
-    }
-  };
-
   return (
     <div>
       <div>Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
 
-      <div className="messages">
-        {messages.map((msg, i) => (
-          <div key={i} className={msg.role}>
-            <strong>{msg.role}:</strong> {msg.content}
-          </div>
-        ))}
-      </div>
+      {messages.map((msg, i) => (
+        <div key={i}>
+          <strong>{msg.role}:</strong> {msg.content}
+        </div>
+      ))}
 
-      <input
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onKeyPress={e => e.key === 'Enter' && handleSend()}
-      />
-      <button onClick={handleSend}>Send</button>
+      <input value={input} onChange={e => setInput(e.target.value)} />
+      <button onClick={() => sendMessage(input)}>Send</button>
       <button onClick={reset}>Reset</button>
     </div>
   );
@@ -1357,16 +1015,99 @@ function ChatInterface() {
 
 ---
 
-## PHASE 6: WebSocket Integration for ElevenLabs TTS
+### Testing Phase 5
 
-### TASK 6.1: สร้าง WebSocket Endpoint สำหรับ Streaming TTS
+**1. Test WebSocket Server:**
+```bash
+# Install wscat
+npm install -g wscat
 
-**Step 6.1.1: สร้าง WebSocket Server สำหรับ TTS**
+# Start servers
+pnpm dev:full
+
+# Connect
+wscat -c ws://localhost:3001
+
+# Send message
+{"type":"chat","text":"สวัสดีครับ","system_prompt":"You are helpful."}
+
+# Expected: {"type":"chat_response","text":"สวัสดีครับ..."}
+```
+
+**2. Test in App:**
+```bash
+pnpm dev:full
+# เปิด http://localhost:3000
+# ใช้ WebSocket Chat feature
+# ควรเห็นการสนทนาแบบ real-time พร้อม history
+```
+
+---
+
+## PHASE 6: WebSocket Integration for ElevenLabs TTS ⚠️ ยังไม่ได้ทำ
+
+**Status:** ⚠️ **ยังไม่ได้ Implement** - ต้องเพิ่ม TTS endpoint ใน WebSocket Server
+**Estimated Effort:** 5-7 ชั่วโมง
+
+### ทำไมต้องมี Phase นี้?
+
+Phase 3 ใช้ ElevenLabs TTS แบบ **REST API** (รอสร้างเสียงทั้งหมดก่อนส่ง) ทำให้:
+- ❌ ต้องรอให้ TTS สร้างเสียงทั้งหมดเสร็จก่อน
+- ❌ Avatar เริ่มพูดช้า (user รู้สึกว่า lag)
+- ❌ Latency สูง (1-3 วินาที)
+
+Phase 6 จะใช้ **WebSocket Streaming TTS** ทำให้:
+- ✅ Avatar เริ่มพูดได้ทันทีที่ได้ audio chunk แรก
+- ✅ ลด perceived latency (รู้สึกว่าเร็วขึ้น)
+- ✅ Smooth playback
+
+### สิ่งที่ยังต้องสร้าง
+
+1. ❌ **เพิ่ม TTS WebSocket Endpoint** ใน `apps/demo/server/websocket-server.ts`
+2. ❌ **React Hook**: `apps/demo/src/liveavatar/useWebSocketTTS.ts`
+3. ❌ **Complete Integration Hook**: `apps/demo/src/liveavatar/useCompleteVoiceChat.ts`
+
+### Architecture
+
+```
+┌─────────────┐
+│ Text Input  │
+└──────┬──────┘
+       │
+       ▼
+┌──────────────────────┐
+│ WS TTS Server        │ ← ws://localhost:3001/ws-tts
+│ (Port 3001)          │
+└──────┬───────────────┘
+       │ (HTTP Streaming)
+       ▼
+┌──────────────────────┐
+│ ElevenLabs API       │
+│ (TTS Streaming)      │
+└──────┬───────────────┘
+       │ (Audio Chunks)
+       ▼
+┌──────────────────────┐
+│ HeyGen Avatar        │ ← Send chunks ทันที
+│ (Lip-sync)           │
+└──────────────────────┘
+```
+
+### TASK 6.1: เพิ่ม TTS WebSocket Endpoint
+
+**แก้ไข:** `apps/demo/server/websocket-server.ts`
 
 ```typescript
-// เพิ่มใน apps/demo/server/websocket-server.ts
+import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
 
-// TTS WebSocket Server
+const server = createServer();
+
+// Chat WebSocket (existing)
+const chatWss = new WebSocketServer({ noServer: true });
+// ... existing chat code ...
+
+// TTS WebSocket (NEW)
 const ttsWss = new WebSocketServer({ noServer: true });
 
 ttsWss.on('connection', (ws) => {
@@ -1413,7 +1154,7 @@ ttsWss.on('connection', (ws) => {
             break;
           }
 
-          // Send audio chunk
+          // Send audio chunk to client
           const base64Chunk = Buffer.from(value).toString('base64');
           ws.send(JSON.stringify({
             type: 'audio_chunk',
@@ -1432,13 +1173,13 @@ ttsWss.on('connection', (ws) => {
   });
 });
 
-// Upgrade handler
+// Upgrade handler (handle multiple paths)
 server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
 
   if (pathname === '/ws-chat') {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
+    chatWss.handleUpgrade(request, socket, head, (ws) => {
+      chatWss.emit('connection', ws, request);
     });
   } else if (pathname === '/ws-tts') {
     ttsWss.handleUpgrade(request, socket, head, (ws) => {
@@ -1448,13 +1189,21 @@ server.on('upgrade', (request, socket, head) => {
     socket.destroy();
   }
 });
+
+server.listen(3001, () => {
+  console.log('WebSocket server running on port 3001');
+  console.log('  /ws-chat - OpenAI Chat');
+  console.log('  /ws-tts  - ElevenLabs TTS');
+});
 ```
 
-**Step 6.1.2: สร้าง Hook สำหรับ Streaming TTS**
+---
+
+### TASK 6.2: สร้าง React Hook สำหรับ Streaming TTS
+
+**สร้างไฟล์ใหม่:** `apps/demo/src/liveavatar/useWebSocketTTS.ts`
 
 ```typescript
-// สร้างไฟล์ใหม่: apps/demo/src/liveavatar/useWebSocketTTS.ts
-
 import { useState, useRef, useCallback } from 'react';
 
 interface TTSConfig {
@@ -1474,7 +1223,6 @@ export function useWebSocketTTS(
   const wsRef = useRef<WebSocket | null>(null);
   const audioChunksRef = useRef<string[]>([]);
 
-  // Connect
   const connect = useCallback(() => {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -1517,7 +1265,6 @@ export function useWebSocketTTS(
     };
   }, [wsUrl, config]);
 
-  // Disconnect
   const disconnect = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -1525,7 +1272,6 @@ export function useWebSocketTTS(
     }
   }, []);
 
-  // Synthesize text
   const synthesize = useCallback((text: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket not connected');
@@ -1543,7 +1289,6 @@ export function useWebSocketTTS(
     }));
   }, [config.voiceId, config.modelId]);
 
-  // Get all audio chunks combined
   const getAudio = useCallback(() => {
     return audioChunksRef.current.join('');
   }, []);
@@ -1559,58 +1304,18 @@ export function useWebSocketTTS(
 }
 ```
 
-**Step 6.1.3: ใช้ WebSocket TTS กับ Avatar**
+---
+
+### TASK 6.3: Complete Voice Chat Integration
+
+**สร้างไฟล์ใหม่:** `apps/demo/src/liveavatar/useCompleteVoiceChat.ts`
 
 ```typescript
-// ตัวอย่างการใช้งานร่วมกับ Avatar
-
-function VoiceChat({ session }: { session: LiveAvatarSession }) {
-  const tts = useWebSocketTTS('ws://localhost:3001/ws-tts', {
-    voiceId: 'pqHfZKP75CvOlQylNhV4',
-
-    onAudioChunk: (chunk, index) => {
-      // ส่ง chunk ไปยัง Avatar ทันที (streaming)
-      session.sendCommand({
-        type: 'agent.speak',
-        event_id: 'streaming-tts',
-        audio: chunk
-      });
-    },
-
-    onComplete: () => {
-      // Signal end of speech
-      session.sendCommand({
-        type: 'agent.speak_end',
-        event_id: 'streaming-tts'
-      });
-    }
-  });
-
-  const handleSpeak = async (text: string) => {
-    // เริ่ม TTS streaming
-    tts.synthesize(text);
-  };
-
-  return (
-    <div>
-      <button onClick={() => handleSpeak('สวัสดีครับ')}>
-        Speak Thai
-      </button>
-    </div>
-  );
-}
-```
-
-### TASK 6.2: รวม Real-time STT + WebSocket Chat + Streaming TTS
-
-**Step 6.2.1: สร้าง Complete Voice-to-Voice System**
-
-```typescript
-// สร้างไฟล์ใหม่: apps/demo/src/liveavatar/useCompleteVoiceChat.ts
-
+import { useState, useEffect, useCallback } from 'react';
 import { useElevenLabsRealtimeSTT } from './useElevenLabsRealtimeSTT';
 import { useWebSocketChat } from './useWebSocketChat';
 import { useWebSocketTTS } from './useWebSocketTTS';
+import { LiveAvatarSession } from '@heygen/liveavatar-web-sdk';
 
 export function useCompleteVoiceChat(session: LiveAvatarSession) {
   const [isActive, setIsActive] = useState(false);
@@ -1618,10 +1323,10 @@ export function useCompleteVoiceChat(session: LiveAvatarSession) {
   // WebSocket Chat
   const chat = useWebSocketChat('ws://localhost:3001/ws-chat');
 
-  // WebSocket TTS
+  // WebSocket TTS with Avatar integration
   const tts = useWebSocketTTS('ws://localhost:3001/ws-tts', {
     onAudioChunk: (chunk) => {
-      // Stream audio to avatar
+      // Send chunk to avatar immediately (streaming)
       session.sendCommand({
         type: 'agent.speak',
         event_id: 'voice-chat',
@@ -1629,6 +1334,7 @@ export function useCompleteVoiceChat(session: LiveAvatarSession) {
       });
     },
     onComplete: () => {
+      // Signal end of speech
       session.sendCommand({
         type: 'agent.speak_end',
         event_id: 'voice-chat'
@@ -1643,23 +1349,22 @@ export function useCompleteVoiceChat(session: LiveAvatarSession) {
 
     onFinalTranscript: async (userText) => {
       console.log('User said:', userText);
-
       // Send to chat WebSocket
       chat.sendMessage(userText);
     }
   });
 
-  // Listen to chat responses
+  // Listen to chat responses → TTS
   useEffect(() => {
     if (chat.messages.length > 0) {
       const lastMessage = chat.messages[chat.messages.length - 1];
 
       if (lastMessage.role === 'assistant') {
-        // Convert to speech via TTS WebSocket
+        // Convert to speech via TTS WebSocket (streaming)
         tts.synthesize(lastMessage.content);
       }
     }
-  }, [chat.messages]);
+  }, [chat.messages, tts]);
 
   // Start complete voice chat
   const start = useCallback(async () => {
@@ -1690,7 +1395,7 @@ export function useCompleteVoiceChat(session: LiveAvatarSession) {
 }
 ```
 
-**Step 6.2.2: ใช้งานใน Component**
+**ใช้งาน:**
 
 ```typescript
 function CompleteVoiceChat({ session }: { session: LiveAvatarSession }) {
@@ -1704,24 +1409,22 @@ function CompleteVoiceChat({ session }: { session: LiveAvatarSession }) {
   } = useCompleteVoiceChat(session);
 
   return (
-    <div className="voice-chat">
-      <div className="controls">
-        {!isActive ? (
-          <button onClick={start}>Start Voice Chat</button>
-        ) : (
-          <button onClick={stop}>Stop Voice Chat</button>
-        )}
-      </div>
+    <div>
+      {!isActive ? (
+        <button onClick={start}>🚀 Start Real-time Voice Chat</button>
+      ) : (
+        <button onClick={stop}>🛑 Stop Voice Chat</button>
+      )}
 
-      <div className="status">
+      <div>
         <div>Active: {isActive ? 'Yes' : 'No'}</div>
         <div>Avatar Speaking: {isSpeaking ? 'Yes' : 'No'}</div>
         {partialText && <div>Listening: {partialText}</div>}
       </div>
 
-      <div className="conversation">
+      <div>
         {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.role}`}>
+          <div key={i}>
             <strong>{msg.role === 'user' ? 'You' : 'Avatar'}:</strong>
             {msg.content}
           </div>
@@ -1734,9 +1437,39 @@ function CompleteVoiceChat({ session }: { session: LiveAvatarSession }) {
 
 ---
 
+### Testing Phase 6
+
+**1. Test TTS WebSocket:**
+```bash
+# Start servers
+pnpm dev:full
+
+# Test with wscat
+wscat -c ws://localhost:3001/ws-tts
+
+# Send
+{"type":"synthesize","text":"สวัสดีครับ","voice_id":"pqHfZKP75CvOlQylNhV4"}
+
+# Expected: Multiple audio_chunk messages + synthesis_complete
+```
+
+**2. Test Complete Integration:**
+```bash
+pnpm dev:full
+# เปิด http://localhost:3000
+# เลือก CUSTOM Mode
+# กด "Start Real-time Voice Chat"
+# พูด → ต้องเห็น:
+#   1. Partial transcripts แบบ real-time
+#   2. AI response
+#   3. Avatar เริ่มพูดเร็วกว่าเดิม (streaming)
+```
+
+---
+
 ## สรุปการทำงานทั้งระบบ
 
-### ขั้นตอนการทำงานแบบเต็มรูปแบบ (Complete Real-time V2V)
+### Flow Diagram: Complete Real-time V2V
 
 ```
 ┌─────────────────┐
@@ -1745,25 +1478,25 @@ function CompleteVoiceChat({ session }: { session: LiveAvatarSession }) {
          │
          ▼
 ┌──────────────────────────┐
-│ ElevenLabs Realtime STT  │ ← WebSocket streaming
+│ ElevenLabs Realtime STT  │ ← WebSocket streaming ⚠️ Phase 4
 │ (Scribe v2)              │
 └────────┬─────────────────┘
          │ Transcript
          ▼
 ┌──────────────────────────┐
-│ OpenAI GPT-4o            │ ← WebSocket chat
-│ (Chat Completion)        │
+│ OpenAI GPT-4o            │ ← WebSocket chat ⚠️ Phase 5
+│ (Chat Completion)        │    (ปัจจุบันใช้ REST API ✅)
 └────────┬─────────────────┘
          │ Response text
          ▼
 ┌──────────────────────────┐
-│ ElevenLabs TTS           │ ← WebSocket streaming
-│ (Text-to-Speech)         │
+│ ElevenLabs TTS           │ ← WebSocket streaming ⚠️ Phase 6
+│ (Text-to-Speech)         │    (ปัจจุบันใช้ REST API ✅)
 └────────┬─────────────────┘
          │ Audio chunks (PCM 24kHz)
          ▼
 ┌──────────────────────────┐
-│ HeyGen Avatar            │ ← WebSocket commands
+│ HeyGen Avatar            │ ← WebSocket commands ✅ พร้อมใช้งาน
 │ (Lip-sync + Video)       │
 └────────┬─────────────────┘
          │ Video stream (LiveKit)
@@ -1775,65 +1508,41 @@ function CompleteVoiceChat({ session }: { session: LiveAvatarSession }) {
 
 ### ความแตกต่างระหว่างโหมด
 
-| Feature | FULL Mode | CUSTOM Mode | CUSTOM + WebSocket |
+| Feature | FULL Mode ✅ | CUSTOM Mode ✅ | CUSTOM + WebSocket ⚠️ |
 |---------|-----------|-------------|-------------------|
 | **STT** | HeyGen built-in | OpenAI Whisper (batch) | ElevenLabs Scribe (realtime) |
 | **AI** | HeyGen built-in | OpenAI (REST API) | OpenAI (WebSocket) |
 | **TTS** | HeyGen built-in | ElevenLabs (REST API) | ElevenLabs (WebSocket streaming) |
-| **Latency** | Low | Medium | Lowest |
+| **Latency** | Low (1-2s) | Medium (3-5s) | Lowest (<1s) |
 | **Customization** | Limited | Full | Full |
 | **Complexity** | Simple | Medium | Advanced |
-| **Cost** | HeyGen only | HeyGen + OpenAI + ElevenLabs | Same |
-| **Real-time** | Yes | Partial | Full |
+| **Implementation** | ✅ Done | ✅ Done | ⚠️ Need Phase 4-6 |
+| **Ready** | ✅ YES | ✅ YES | ❌ NO |
 
 ---
 
-## การรัน WebSocket Server
+## 📋 TODO List สำหรับการพัฒนาต่อ
 
-### สร้าง Package Script
+### High Priority (สำหรับ Real-time Performance)
 
-```json
-// เพิ่มใน apps/demo/package.json
+- [ ] **Phase 4.1**: สร้าง `/api/elevenlabs-stt-token` endpoint (1-2 ชม.)
+- [ ] **Phase 4.2**: สร้าง `useElevenLabsRealtimeSTT.ts` hook (3-4 ชม.)
+- [ ] **Phase 4.3**: Integration testing (1 ชม.)
 
-{
-  "scripts": {
-    "dev": "next dev",
-    "ws-server": "tsx server/websocket-server.ts",
-    "dev:full": "concurrently \"pnpm dev\" \"pnpm ws-server\""
-  },
-  "devDependencies": {
-    "ws": "^8.14.2",
-    "tsx": "^4.7.0",
-    "concurrently": "^8.2.2"
-  }
-}
-```
+### Medium Priority (สำหรับ Lower Latency)
 
-### รันทั้งระบบ
+- [ ] **Phase 5.1**: สร้าง Custom WebSocket Server (2-3 ชม.)
+- [ ] **Phase 5.2**: สร้าง `useWebSocketChat.ts` hook (2-3 ชม.)
+- [ ] **Phase 5.3**: Integration testing (1 ชม.)
 
-```bash
-# ติดตั้ง dependencies เพิ่มเติม
-pnpm add -D ws tsx concurrently @types/ws
+### Advanced (Complete Integration)
 
-# รันทั้ง Next.js และ WebSocket server พร้อมกัน
-pnpm dev:full
-```
+- [ ] **Phase 6.1**: เพิ่ม TTS WebSocket endpoint (2-3 ชม.)
+- [ ] **Phase 6.2**: สร้าง `useWebSocketTTS.ts` hook (2-3 ชม.)
+- [ ] **Phase 6.3**: สร้าง `useCompleteVoiceChat.ts` (2-3 ชม.)
+- [ ] **Phase 6.4**: Full system integration testing (2 ชม.)
 
----
-
-## Environment Variables ที่ต้องเพิ่ม
-
-```env
-# ElevenLabs Realtime STT
-ELEVENLABS_API_KEY=your_elevenlabs_api_key
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
-
-# HeyGen
-LIVEAVATAR_API_KEY=your_heygen_api_key
-LIVEAVATAR_AVATAR_ID=dd73ea75-1218-4ef3-92ce-606d5f7fbc0a
-```
+**Total Estimated Effort: 18-25 ชั่วโมง**
 
 ---
 
@@ -1857,3 +1566,4 @@ LIVEAVATAR_AVATAR_ID=dd73ea75-1218-4ef3-92ce-606d5f7fbc0a
 - [ElevenLabs Realtime STT](https://elevenlabs.io/docs/cookbooks/speech-to-text/streaming)
 - [LiveKit Docs](https://docs.livekit.io)
 - [WebSocket API (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
+- [Testing Documentation](./TEST_V2V_PROCESS.md)
