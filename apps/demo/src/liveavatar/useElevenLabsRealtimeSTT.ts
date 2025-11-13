@@ -14,6 +14,9 @@ export function useElevenLabsRealtimeSTT(config: ScribeConfig = {}) {
   const [finalText, setFinalText] = useState('');
   const connectionRef = useRef<any>(null);
 
+  // Store all committed transcripts for combining when connection closes
+  const allTranscriptsRef = useRef<string[]>([]);
+
   // Store callbacks in refs to avoid dependency issues
   const callbacksRef = useRef(config);
 
@@ -25,6 +28,13 @@ export function useElevenLabsRealtimeSTT(config: ScribeConfig = {}) {
   const connect = useCallback(async () => {
     try {
       console.log('🔌 Starting connection to ElevenLabs Scribe...');
+
+      // Reset transcript accumulator for new session
+      allTranscriptsRef.current = [];
+
+      // Reset UI state for fresh session
+      setFinalText('');
+      setPartialText('');
 
       // 1. Get single-use token from backend
       const tokenRes = await fetch('/api/elevenlabs-stt-token', {
@@ -72,6 +82,10 @@ export function useElevenLabsRealtimeSTT(config: ScribeConfig = {}) {
 
       connection.on(RealtimeEvents.COMMITTED_TRANSCRIPT, (data: any) => {
         console.log('✅ COMMITTED_TRANSCRIPT:', data.text);
+
+        // Store transcript for combining later
+        allTranscriptsRef.current.push(data.text);
+
         setFinalText(prev => prev + ' ' + data.text);
         callbacksRef.current.onFinalTranscript?.(data.text);
         setPartialText('');
@@ -94,6 +108,17 @@ export function useElevenLabsRealtimeSTT(config: ScribeConfig = {}) {
 
       connection.on(RealtimeEvents.CLOSE, () => {
         console.log('🔌 CONNECTION CLOSED');
+
+        // Display combined transcript from the entire session
+        if (allTranscriptsRef.current.length > 0) {
+          const combinedText = allTranscriptsRef.current.join(' ');
+          console.log('📝 [REALTIME STT] Combined full transcript:', combinedText);
+          console.log('📊 [REALTIME STT] Total segments:', allTranscriptsRef.current.length);
+          console.log('📊 [REALTIME STT] Total length:', combinedText.length, 'characters');
+        } else {
+          console.log('📝 [REALTIME STT] No transcripts in this session');
+        }
+
         setIsConnected(false);
       });
 

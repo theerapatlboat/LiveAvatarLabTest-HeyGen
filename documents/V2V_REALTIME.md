@@ -827,6 +827,16 @@ http://localhost:3012
 📊 [REALTIME STT] Transcript length: 28 characters
 ```
 
+**เมื่อกด "Stop Realtime Voice Chat" หรือ Disconnect:**
+```
+🔌 CONNECTION CLOSED
+📝 [REALTIME STT] Combined full transcript: สวัสดีครับ ทดสอบระบบ
+📊 [REALTIME STT] Total segments: 1
+📊 [REALTIME STT] Total length: 28 characters
+```
+
+**หมายเหตุ:** ระบบจะรวมข้อความทั้งหมดที่ได้จาก COMMITTED_TRANSCRIPT events ตลอดการเชื่อมต่อ และแสดงประโยครวมเมื่อปิดการเชื่อมต่อ
+
 **Expected UI Behavior:**
 - ✅ "Connected: true" แสดงใน UI
 - ✅ **Partial text** (สีเทา, italic) อัพเดตแบบ real-time ขณะพูด
@@ -1143,6 +1153,8 @@ connection.on(RealtimeEvents.CLOSE, async () => {
 - ✅ Final transcripts หลังเงียบ ~1.5 วินาที
 - ✅ รองรับภาษาไทย
 - ✅ ไม่ต้องมี OpenAI/ElevenLabs TTS API keys
+- ✅ **Combined transcript summary** - รวมข้อความทั้งหมดและแสดงเมื่อปิดการเชื่อมต่อ
+- ✅ **Auto transcript reset** - ข้อความถูกรีเซ็ตอัตโนมัติเมื่อเริ่ม session ใหม่
 
 **Next Steps (Optional):**
 1. 🔄 Uncomment full voice-to-voice flow (OpenAI + TTS + Avatar)
