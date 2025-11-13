@@ -1,12 +1,379 @@
 # TROUBLESHOOTING: Voice-to-Voice Integration
 
 ## 📑 Table of Contents
-1. [WebSocket TTS Connection Failed](#websocket-tts-connection-failed)
-2. [TypeScript Error: 'currentChunkText' is possibly 'undefined'](#typescript-error-currentchunktext-is-possibly-undefined)
-3. [ELEVENLABS_API_KEY not configured (but exists in .env.local)](#elevenlabs_api_key-not-configured-but-exists-in-envlocal)
-4. [404 Not Found: /test-ws-tts](#404-not-found-test-ws-tts)
-5. [Module not found: Can't resolve '@/liveavatar/useWebSocketTTS'](#module-not-found-cant-resolve-liveavatarusewebsockettts)
-6. [ElevenLabs Realtime STT - No Transcripts](#elevenlabs-realtime-stt-no-transcripts)
+1. [Text Not Chunking by Delimiters (Returns Single Chunk)](#text-not-chunking-by-delimiters-returns-single-chunk) ⚠️ **NEW 2025-11-13**
+2. [WebSocket TTS Connection Failed](#websocket-tts-connection-failed)
+3. [TypeScript Error: 'currentChunkText' is possibly 'undefined'](#typescript-error-currentchunktext-is-possibly-undefined)
+4. [ELEVENLABS_API_KEY not configured (but exists in .env.local)](#elevenlabs_api_key-not-configured-but-exists-in-envlocal)
+5. [404 Not Found: /test-ws-tts](#404-not-found-test-ws-tts)
+6. [Module not found: Can't resolve '@/liveavatar/useWebSocketTTS'](#module-not-found-cant-resolve-liveavatarusewebsockettts)
+7. [ElevenLabs Realtime STT - No Transcripts](#elevenlabs-realtime-stt-no-transcripts)
+
+---
+
+## ปัญหา: Text Not Chunking by Delimiters (Returns Single Chunk)
+
+**Date:** 2025-11-13
+**Severity:** ⚠️ Medium (Functionality Issue)
+**Status:** ✅ Fixed
+
+### 🔍 Symptoms (อาการ)
+
+เมื่อส่งข้อความที่มี delimiters (`.` `!` `?` `,` `;` `:`) ไปยัง WebSocket TTS Server:
+
+```
+Input: "สวัสดีครับ. ยินดีต้อนรับสู่ระบบ! WebSocket TTS?"
+Expected chunks: 3 chunks
+  - Chunk 1: "สวัสดีครับ."
+  - Chunk 2: "ยินดีต้อนรับสู่ระบบ!"
+  - Chunk 3: "WebSocket TTS?"
+
+Actual result: 1 chunk
+  - Chunk 1: "สวัสดีครับ. ยินดีต้อนรับสู่ระบบ! WebSocket TTS?"
+```
+
+**Observed Behavior:**
+- ❌ Text ไม่ถูกแบ่งเป็น chunks ตาม delimiters
+- ❌ Client logs แสดง `Total chunks: 1`
+- ❌ Server logs แสดง `Text chunked into 1 chunks`
+- ❌ ไม่ได้ progressive audio playback
+- ❌ Latency สูงเพราะต้องรอ generate audio ทั้งหมด
+
+### 🐛 Root Cause (สาเหตุหลัก)
+
+#### **PRIMARY ISSUE: Early Return for Short Text** ⚠️
+
+**ไฟล์:** [apps/demo/server/websocket-tts-server.ts](../apps/demo/server/websocket-tts-server.ts) (lines 100-104 - เวอร์ชันเก่า)
+
+**โค้ดที่เป็นปัญหา (ก่อนแก้ไข):**
+```typescript
+function chunkText(text: string, maxChunkSize: number = 200): string[] {
+  console.log('🔪 Starting text chunking...');
+
+  // ❌ ปัญหาอยู่ตรงนี้!
+  // If text is shorter than maxChunkSize, return as single chunk
+  if (text.length <= maxChunkSize) {
+    console.log('✅ Text fits in single chunk');
+    return [text.trim()];  // ← คืนค่า single chunk ทันที!
+  }
+
+  // ... chunking logic ที่ไม่ถูกเรียกใช้สำหรับข้อความสั้น
+}
+```
+
+**เหตุผลที่เกิดปัญหา:**
+
+1. **Early Return Condition:**
+   - Text length = 68 characters (ภาษาไทย)
+   - maxChunkSize = 200 characters
+   - `68 <= 200` = `true`
+   - → ส่งคืน single chunk ทันที โดย**ไม่ผ่าน chunking logic เลย**
+
+2. **Chunking Logic ไม่ได้ถูกเรียกใช้:**
+   - โค้ด delimiter splitting (lines 115+) ไม่ทำงาน
+   - Primary/Secondary delimiter detection ไม่ทำงาน
+   - ไม่สร้าง natural sentence breaks
+
+3. **Design Flaw:**
+   - Logic ถูกออกแบบมาเพื่อป้องกัน "over-splitting" สำหรับข้อความสั้น
+   - แต่กลับทำให้**ไม่แบ่ง chunks เลย** แม้จะมี delimiters ชัดเจน
+
+**ผลกระทบ:**
+- ❌ ไม่ได้ progressive audio playback → latency สูง
+- ❌ ไม่มี natural pauses ระหว่างประโยค
+- ❌ User experience แย่ลง (ต้องรอ audio ทั้งหมด)
+- ❌ ไม่ได้ประโยชน์จาก text chunking ที่ออกแบบไว้
+
+### 🔧 Solution (วิธีแก้ปัญหา)
+
+#### วิธีที่ 1: ลบ Early Return Condition (แนะนำ) ✅
+
+**แก้ไข:** ลบ early return check และให้ chunking logic ทำงานเสมอ
+
+**File:** [apps/demo/server/websocket-tts-server.ts](../apps/demo/server/websocket-tts-server.ts)
+
+**Changes:**
+
+**Before (ก่อนแก้ไข):**
+```typescript
+function chunkText(text: string, maxChunkSize: number = 200): string[] {
+  // ...
+
+  // ❌ ลบส่วนนี้ออก
+  if (text.length <= maxChunkSize) {
+    console.log('✅ Text fits in single chunk');
+    return [text.trim()];
+  }
+
+  const chunks: string[] = [];
+  // ... chunking logic
+}
+```
+
+**After (หลังแก้ไข):**
+```typescript
+function chunkText(text: string, maxChunkSize: number = 200): string[] {
+  console.log('🔪 Starting text chunking...');
+  console.log(`📝 Original text length: ${text.length} characters`);
+
+  // If text is empty, return empty array
+  if (!text || text.trim().length === 0) {
+    console.log('⚠️ Empty text, returning empty array');
+    return [];
+  }
+
+  // ✅ ไม่มี early return - ให้ chunking logic ทำงานเสมอ
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  // Combined regex for all delimiters
+  const allDelimiters = /([.!?,;:])/g;
+  const parts = text.split(allDelimiters);
+
+  // ... chunking logic ทำงานต่อ
+}
+```
+
+#### วิธีที่ 2: ปรับ Chunking Strategy ✅
+
+**แก้ไข:** ให้ primary delimiters ทำงาน**ทุกครั้ง** โดยไม่คำนึงถึง chunk size
+
+**Before (ก่อนแก้ไข):**
+```typescript
+// ❌ Primary delimiter ต้องมีขนาด > 50% maxChunkSize
+if (isPrimaryDelimiter && currentChunk.length > maxChunkSize * 0.5) {
+  chunks.push(currentChunk.trim());
+  currentChunk = '';
+}
+```
+
+**After (หลังแก้ไข):**
+```typescript
+// Strategy 1: ✅ Always flush after primary delimiters (. ! ?) regardless of size
+// This ensures natural sentence breaks
+if (isPrimaryDelimiter) {
+  chunks.push(currentChunk.trim());
+  console.log(`✂️ Chunk ${chunks.length} (primary): ${currentChunk.length} chars`);
+  currentChunk = '';
+}
+// Strategy 2: Flush after secondary delimiters (, ; :) only if chunk is large
+else if (isSecondaryDelimiter && currentChunk.length > maxChunkSize * 0.3) {
+  chunks.push(currentChunk.trim());
+  console.log(`✂️ Chunk ${chunks.length} (secondary): ${currentChunk.length} chars`);
+  currentChunk = '';
+}
+```
+
+**Key Changes:**
+1. **Primary delimiters (`.` `!` `?`):** Flush เสมอ (no size check)
+2. **Secondary delimiters (`,` `;` `:`):** Flush เมื่อ chunk > 30% maxChunkSize (60 chars)
+3. **Rationale:**
+   - Primary delimiters = sentence endings → ควร break เสมอ
+   - Secondary delimiters = pauses within sentence → break เฉพาะเมื่อ chunk ใหญ่พอ
+
+### 🧪 Testing Steps (ขั้นตอนการทดสอบ)
+
+#### Step 1: Restart WebSocket Server
+
+```bash
+# Stop existing server (Ctrl+C)
+# Start server again
+cd apps/demo
+pnpm ws-tts
+```
+
+**Expected Output:**
+```
+🚀 Starting WebSocket TTS server...
+✅ ElevenLabs API key found
+✅ WebSocket TTS Server is listening on port 3013
+🔗 Connect to: ws://localhost:3013/ws/elevenlabs-tts
+```
+
+#### Step 2: ทดสอบด้วย Test Page
+
+**เปิด:** http://localhost:3012/test-ws-tts
+
+**Test Input:**
+```
+สวัสดีครับ. ยินดีต้อนรับสู่ระบบ! WebSocket TTS?
+```
+
+**Expected Server Logs:**
+```
+🔪 Starting text chunking...
+📝 Original text length: 68 characters
+✂️ Chunk 1 (primary): 15 chars - "สวัสดีครับ."
+✂️ Chunk 2 (primary): 28 chars - "ยินดีต้อนรับสู่ระบบ!"
+✂️ Chunk 3 (final): 15 chars - "WebSocket TTS?"
+✅ Text chunked into 3 chunks using delimiters: . ! ? , ; :
+
+🎯 Processing chunk 1/3
+  Text: "สวัสดีครับ."
+📞 [TTS] Calling ElevenLabs API...
+✅ [TTS] Received audio for chunk 1
+📤 [TTS] Sent chunk 1/3 to client
+
+🎯 Processing chunk 2/3
+  Text: "ยินดีต้อนรับสู่ระบบ!"
+...
+```
+
+**Expected Client Logs:**
+```
+📦 Received audio chunk 1/3
+📦 Received audio chunk 2/3
+📦 Received audio chunk 3/3
+✅ TTS synthesis completed
+✅ Synthesis completed! Total chunks: 3  ← ✅ ต้องเป็น 3 chunks!
+```
+
+#### Step 3: ทดสอบ Edge Cases
+
+**Test Case 1: ข้อความสั้นมาก (< 20 chars) แต่มี delimiter**
+```
+Input: "สวัสดีครับ. ขอบคุณ!"
+Expected: 2 chunks
+```
+
+**Test Case 2: ข้อความยาวมาก (> 200 chars) แต่ไม่มี delimiter**
+```
+Input: "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat"
+Expected: 1 chunk (fallback to no-delimiter mode)
+```
+
+**Test Case 3: Secondary delimiters**
+```
+Input: "สวัสดีครับ, ยินดีต้อนรับ; ทดสอบระบบ: WebSocket TTS"
+Expected: 1-4 chunks (ขึ้นอยู่กับ threshold 30%)
+```
+
+### 📊 Verification Checklist
+
+เมื่อแก้ไขแล้ว ให้ตรวจสอบว่า:
+
+- ✅ **Text < 200 chars with delimiters:** แบ่งเป็นหลาย chunks
+- ✅ **Primary delimiters (`.` `!` `?`):** Flush ทุกครั้งไม่ว่า size
+- ✅ **Secondary delimiters (`,` `;` `:`):** Flush เฉพาะเมื่อ chunk ใหญ่พอ (> 60 chars)
+- ✅ **Server logs:** แสดง chunking details ครบถ้วน
+- ✅ **Client logs:** แสดง `Total chunks: X` (X > 1 สำหรับข้อความที่มี delimiters)
+- ✅ **Audio playback:** Progressive playback (เล่น chunk แรกก่อน ไม่ต้องรอทั้งหมด)
+- ✅ **TypeScript:** ไม่มี compilation errors
+
+### 💡 Best Practices
+
+**1. Chunking Strategy:**
+```typescript
+// ✅ DO: Primary delimiters always flush
+if (isPrimaryDelimiter) {
+  chunks.push(currentChunk.trim());
+}
+
+// ✅ DO: Secondary delimiters flush conditionally
+else if (isSecondaryDelimiter && currentChunk.length > threshold) {
+  chunks.push(currentChunk.trim());
+}
+
+// ❌ DON'T: Early return for short text
+if (text.length <= maxChunkSize) {
+  return [text.trim()];  // ← หลีกเลี่ยงสิ่งนี้
+}
+```
+
+**2. Logging:**
+```typescript
+// ✅ DO: Log chunk details with delimiter type
+console.log(`✂️ Chunk ${chunks.length} (primary): ${chars} chars`);
+console.log(`✂️ Chunk ${chunks.length} (secondary): ${chars} chars`);
+console.log(`✂️ Chunk ${chunks.length} (final): ${chars} chars`);
+```
+
+**3. Testing:**
+```typescript
+// ✅ DO: Test with various text lengths and delimiters
+testCases = [
+  { text: "Short. Text!", expected: 2 },
+  { text: "Medium, text; with: various, delimiters.", expected: 2-4 },
+  { text: "Very long text without any delimiters at all", expected: 1 }
+];
+```
+
+### ⚠️ Common Mistakes
+
+#### 1. หลงคิดว่า maxChunkSize คือ "minimum chunk size"
+
+**ผิด:**
+```typescript
+// ❌ คิดว่า: "ถ้า text สั้นกว่า maxChunkSize ไม่ต้อง chunk"
+if (text.length <= maxChunkSize) return [text];
+```
+
+**ถูก:**
+```typescript
+// ✅ maxChunkSize = ขนาดสูงสุดของแต่ละ chunk
+// แต่ควร chunk ตาม delimiters เสมอเพื่อ natural breaks
+const parts = text.split(allDelimiters);
+// ... chunk logic
+```
+
+#### 2. Primary และ Secondary delimiters ใช้ threshold เดียวกัน
+
+**ผิด:**
+```typescript
+// ❌ ใช้ threshold เดียวกันทั้ง primary และ secondary
+if ((isPrimaryDelimiter || isSecondaryDelimiter) && size > threshold) {
+  flush();
+}
+```
+
+**ถูก:**
+```typescript
+// ✅ Primary = always flush, Secondary = conditional
+if (isPrimaryDelimiter) {
+  flush();  // ไม่ check size
+}
+else if (isSecondaryDelimiter && size > 0.3 * maxChunkSize) {
+  flush();  // check size เฉพาะ secondary
+}
+```
+
+#### 3. ลืม Test กับข้อความสั้น
+
+**ผิด:**
+```typescript
+// ❌ ทดสอบแค่ข้อความยาวๆ
+testText = "Very long text with many sentences and delimiters..."
+```
+
+**ถูก:**
+```typescript
+// ✅ ทดสอบทั้งข้อความสั้นและยาว
+testCases = [
+  "สวัสดี.",                                    // short
+  "สวัสดีครับ. ยินดีต้อนรับ!",                // medium
+  "Very long text with many sentences..."      // long
+];
+```
+
+### 📝 Related Issues
+
+- **Issue #1:** [WebSocket TTS Connection Failed](#websocket-tts-connection-failed)
+- **Issue #2:** [TypeScript Error: 'currentChunkText' is possibly 'undefined'](#typescript-error-currentchunktext-is-possibly-undefined)
+
+### 🔗 References
+
+- **Code Location:** [apps/demo/server/websocket-tts-server.ts:85-161](../apps/demo/server/websocket-tts-server.ts)
+- **Documentation:** [V2V_REALTIME.md - Phase 5: Text Chunking Strategy](./V2V_REALTIME.md#text-chunking-strategy)
+- **Test Page:** http://localhost:3012/test-ws-tts
+
+### 📋 Changelog
+
+**2025-11-13:**
+- ✅ Removed early return condition for short text
+- ✅ Updated primary delimiter strategy: Always flush (no size check)
+- ✅ Updated secondary delimiter strategy: Flush at 30% threshold (60 chars)
+- ✅ Simplified fallback logic for text without delimiters
+- ✅ Added detailed logging for each delimiter type (primary/secondary/final)
 
 ---
 

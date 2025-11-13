@@ -85,7 +85,7 @@ wss.on('connection', (ws: WebSocket, req) => {
 /**
  * Text Chunking Logic
  * Split text into smaller chunks based on delimiters for progressive audio playback
- * Supports: comma, exclamation, question, space
+ * Supports: Period (.), Exclamation (!), Question (?), Comma (,), Semicolon (;), Colon (:)
  */
 function chunkText(text: string, maxChunkSize: number = 200): string[] {
   console.log('🔪 Starting text chunking...');
@@ -97,26 +97,19 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
     return [];
   }
 
-  // If text is shorter than maxChunkSize, return as single chunk
-  if (text.length <= maxChunkSize) {
-    console.log('✅ Text fits in single chunk');
-    return [text.trim()];
-  }
-
   const chunks: string[] = [];
   let currentChunk = '';
 
-  // Primary delimiters (strongest breaks)
-  const primaryDelimiters = /([.!?])/g;
+  // Combined regex for all delimiters
+  // Primary (strongest breaks): Period (.), Exclamation (!), Question (?)
+  // Secondary (weaker breaks): Comma (,), Semicolon (;), Colon (:)
+  const allDelimiters = /([.!?,;:])/g;
 
-  // Secondary delimiters (weaker breaks)
-  const secondaryDelimiters = /([,;:])/g;
+  // Split by all delimiters first (primary + secondary)
+  const parts = text.split(allDelimiters);
 
-  // Split by sentences first
-  const sentences = text.split(primaryDelimiters);
-
-  for (let i = 0; i < sentences.length; i++) {
-    const part = sentences[i];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
 
     // Skip empty parts
     if (!part || part.trim().length === 0) continue;
@@ -130,12 +123,23 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
 
     currentChunk += part;
 
-    // If current part is a delimiter and chunk is not empty, consider flushing
-    if (primaryDelimiters.test(part) && currentChunk.trim().length > 0) {
-      // If chunk is large enough or we're at reasonable breaking point
-      if (currentChunk.length > maxChunkSize * 0.5) {
+    // Determine if we should flush based on delimiter type
+    const isPrimaryDelimiter = /[.!?]/.test(part);
+    const isSecondaryDelimiter = /[,;:]/.test(part);
+
+    if (currentChunk.trim().length > 0) {
+      // Strategy 1: Always flush after primary delimiters (. ! ?) regardless of size
+      // This ensures natural sentence breaks
+      if (isPrimaryDelimiter) {
         chunks.push(currentChunk.trim());
-        console.log(`✂️ Chunk ${chunks.length}: ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
+        console.log(`✂️ Chunk ${chunks.length} (primary): ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
+        currentChunk = '';
+      }
+      // Strategy 2: Flush after secondary delimiters (, ; :) only if chunk is large
+      // This prevents too many tiny chunks for short texts
+      else if (isSecondaryDelimiter && currentChunk.length > maxChunkSize * 0.3) {
+        chunks.push(currentChunk.trim());
+        console.log(`✂️ Chunk ${chunks.length} (secondary): ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
         currentChunk = '';
       }
     }
@@ -144,28 +148,17 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
   // Add remaining text as final chunk
   if (currentChunk.trim().length > 0) {
     chunks.push(currentChunk.trim());
-    console.log(`✂️ Chunk ${chunks.length}: ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
+    console.log(`✂️ Chunk ${chunks.length} (final): ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
   }
 
-  // If no chunks were created (edge case), split by space
+  // If no chunks were created (edge case), return original text as single chunk
   if (chunks.length === 0) {
-    const words = text.split(' ');
-    currentChunk = '';
-
-    for (const word of words) {
-      if (currentChunk.length + word.length + 1 > maxChunkSize && currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
-      currentChunk += (currentChunk ? ' ' : '') + word;
-    }
-
-    if (currentChunk.trim().length > 0) {
-      chunks.push(currentChunk.trim());
-    }
+    console.log('⚠️ No delimiter-based chunks created, returning text as single chunk');
+    chunks.push(text.trim());
+    console.log(`✂️ Chunk 1 (no delimiters): ${text.trim().length} chars - "${text.trim().substring(0, 50)}..."`);
   }
 
-  console.log(`✅ Text chunked into ${chunks.length} chunks`);
+  console.log(`✅ Text chunked into ${chunks.length} chunks using delimiters: . ! ? , ; :`);
   return chunks;
 }
 

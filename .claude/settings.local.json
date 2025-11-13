@@ -23,7 +23,8 @@
       "Bash(then echo \"File .env.local exists\")",
       "Bash(else echo \"File .env.local not found\")",
       "Bash(then echo \"File .env exists\")",
-      "Bash(else echo \"File .env not found\")"
+      "Bash(else echo \"File .env not found\")",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

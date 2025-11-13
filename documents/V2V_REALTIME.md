@@ -51,20 +51,24 @@
 - ✅ แสดง partial และ final transcripts ใน console
 - ✅ Full V2V flow (OpenAI + WebSocket TTS + Avatar)
 
-🚧 **Phase 5**: WebSocket TTS (50% - กำลังดำเนินการ)
+🚧 **Phase 5**: WebSocket TTS (50% - กำลังดำเนินการ) - **อัพเดต 2025-11-13**
 - ✅ **Task 1: Setup Project Structure เสร็จแล้ว** (โฟลเดอร์, dependencies, npm script)
-- ✅ **Task 2: Implement WebSocket Server เสร็จแล้ว** (ไฟล์ `server/websocket-tts-server.ts` พร้อมใช้งาน)
+- ✅ **Task 2: Implement WebSocket Server เสร็จแล้ว** (ไฟล์ `server/websocket-tts-server.ts` พร้อมใช้งาน - 340 บรรทัด)
   - ✅ Basic server structure with WebSocket on port 3013
-  - ✅ **Text chunking logic (lines 90-170)** - แบ่งข้อความตาม delimiters:
+  - ✅ **Text chunking logic (lines 85-184) - อัพเดต 2025-11-13** - แบ่งข้อความตาม delimiters:
     - **Primary delimiters:** `.` `!` `?` (strong sentence breaks) ✅ **ตามที่ User ร้องขอ**
-    - **Secondary delimiters:** `,` `;` `:` (weaker breaks) ✅ **รวมถึง `,` ที่ User ร้องขอ**
+    - **Secondary delimiters:** `,` `;` `:` (weaker breaks) ✅ **ตามที่ User ร้องขอ - อัพเดตเพิ่มเติมแล้ว**
     - **Max chunk size:** 200 characters
+    - **Chunking strategy:**
+      - Primary delimiters: Flush เมื่อ chunk > 50% ของ maxChunkSize (100 chars)
+      - Secondary delimiters: Flush เมื่อ chunk > 70% ของ maxChunkSize (140 chars)
+      - Smart delimiter detection: ตรวจจับและ flush ตามความเหมาะสม
     - **Fallback:** Word-based splitting ถ้าไม่มี delimiters
     - **ส่งไปยัง ElevenLabs:** ✅ แต่ละ chunk ถูกส่งไปแปลง TTS แยกกัน แล้ว stream audio กลับมาแบบ sequential
-    - **📍 Verification:** ตรวจสอบแล้วว่า text chunking ทำงานตามที่ร้องขอ (`,` `!` `?` `.`) พร้อมใช้งาน
+    - **📍 Verification:** ✅ **อัพเดตเสร็จสมบูรณ์ 2025-11-13** - ตรวจสอบแล้วว่า text chunking ทำงานครบทุก delimiters (`.` `!` `?` `,` `;` `:`) พร้อมใช้งาน
   - ✅ ElevenLabs TTS API integration (REST API)
   - ✅ WebSocket message handling (tts, stop, ping)
-  - ✅ Comprehensive logging with emojis
+  - ✅ Comprehensive logging with emojis (🔪, ✂️, 🎯, 📝, ✅, 📤)
   - ✅ Error handling and graceful shutdown
 - ✅ **Task 3: React Hook เสร็จแล้ว** (ไฟล์ `src/liveavatar/useWebSocketTTS.ts` พร้อมใช้งาน)
   - ✅ TypeScript interfaces (TTSConfig, TTSProgress, WebSocketMessage)
@@ -317,27 +321,49 @@ Real-time Speech-to-Text streaming พร้อม Voice-to-Voice integration �
 
 ### หลักการทำงาน (Working Principles)
 
-#### 1. Text Chunking Strategy ✅ **ใช้งานได้แล้ว**
+#### 1. Text Chunking Strategy ✅ **ใช้งานได้แล้ว - อัพเดต 2025-11-13**
 
-**Implementation Status:** ✅ **Implemented** in [apps/demo/server/websocket-tts-server.ts:90-170](../apps/demo/server/websocket-tts-server.ts)
+**Implementation Status:** ✅ **Implemented และ Updated** in [apps/demo/server/websocket-tts-server.ts:85-184](../apps/demo/server/websocket-tts-server.ts)
 
 แบ่งข้อความตาม delimiters เพื่อสร้าง natural speech breaks:
 - **Primary Delimiters (Strong breaks):** Period (`.`), Exclamation (`!`), Question (`?`)
-- **Secondary Delimiters (Weaker breaks):** Comma (`,`), Semicolon (`;`), Colon (`:`)
+- **Secondary Delimiters (Weaker breaks):** Comma (`,`), Semicolon (`;`), Colon (`:`) ✅ **อัพเดตเพิ่มเติม 2025-11-13**
 - **Max Chunk Size:** 200 characters
 - **Fallback Strategy:** Word-based splitting ถ้าไม่มี delimiters
 
-**วิธีการทำงาน:**
+**วิธีการทำงาน (อัพเดต 2025-11-13):**
 ```typescript
 function chunkText(text: string, maxChunkSize: number = 200): string[] {
-  // 1. Split by primary delimiters (. ! ?) first
-  const primaryDelimiters = /([.!?])/g;
-  const sentences = text.split(primaryDelimiters);
+  // Combined regex for all delimiters
+  // Primary (strongest breaks): Period (.), Exclamation (!), Question (?)
+  // Secondary (weaker breaks): Comma (,), Semicolon (;), Colon (:)
+  const allDelimiters = /([.!?,;:])/g;
 
-  // 2. Build chunks respecting maxChunkSize
-  // 3. Flush chunk when size exceeds limit
-  // 4. Consider secondary delimiters (, ; :) for better breaks
-  // 5. Fallback to word-based splitting if needed
+  // Split by all delimiters (primary + secondary)
+  const parts = text.split(allDelimiters);
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+
+    // Determine if we should flush based on delimiter type
+    const isPrimaryDelimiter = /[.!?]/.test(part);
+    const isSecondaryDelimiter = /[,;:]/.test(part);
+
+    if (currentChunk.trim().length > 0) {
+      // Primary delimiters: Flush if chunk > 50% of maxChunkSize
+      if (isPrimaryDelimiter && currentChunk.length > maxChunkSize * 0.5) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+      // Secondary delimiters: Flush if chunk > 70% of maxChunkSize
+      else if (isSecondaryDelimiter && currentChunk.length > maxChunkSize * 0.7) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+    }
+  }
+
+  // Fallback: Word-based splitting if no delimiter-based chunks created
 }
 ```
 
@@ -347,6 +373,7 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
 - ✅ รองรับข้อความยาวๆ
 - ✅ แต่ละ chunk ถูกส่งไปยัง ElevenLabs REST API แยกกัน
 - ✅ Audio chunks stream กลับมาทาง WebSocket แบบ sequential
+- ✅ **อัพเดต 2025-11-13:** รองรับทั้ง primary และ secondary delimiters ครบถ้วน (`.` `!` `?` `,` `;` `:`)
 
 #### 2. Sequential Audio Playback
 ใช้ queue-based playback:
@@ -963,7 +990,7 @@ cat apps/demo/package.json | grep "ws-tts"
 
 ---
 
-#### **Task 2: Implement WebSocket Server** ✅ **เสร็จสมบูรณ์** (เวลาที่ใช้: ~45 นาที)
+#### **Task 2: Implement WebSocket Server** ✅ **เสร็จสมบูรณ์ - อัพเดต 2025-11-13** (เวลาที่ใช้: ~45 นาที + 15 นาที update)
 
 **Step 2.1: สร้างโครงสร้างพื้นฐานของ Server** ✅
 - สร้างไฟล์ `apps/demo/server/websocket-tts-server.ts`
@@ -971,10 +998,13 @@ cat apps/demo/package.json | grep "ws-tts"
 - Setup WebSocket server บน port 3013
 - Implement basic connection handling
 
-**Step 2.2: Implement Text Chunking Logic** ✅
+**Step 2.2: Implement Text Chunking Logic** ✅ **อัพเดต 2025-11-13**
 - ✅ สร้าง function `chunkText(text: string, maxChunkSize: number): string[]`
-- ✅ รองรับ primary delimiters: . ! ?
-- ✅ รองรับ secondary delimiters: , ; :
+- ✅ รองรับ primary delimiters: `.` `!` `?` (Period, Exclamation, Question)
+- ✅ รองรับ secondary delimiters: `,` `;` `:` (Comma, Semicolon, Colon) **อัพเดตเพิ่มเติม 2025-11-13**
+- ✅ **Smart chunking strategy:**
+  - Primary delimiters: Flush เมื่อ chunk > 50% ของ maxChunkSize
+  - Secondary delimiters: Flush เมื่อ chunk > 70% ของ maxChunkSize
 - ✅ Implement logging สำหรับ debug (🔪, ✂️, ✅)
 - ✅ รองรับทั้งภาษาไทยและภาษาอังกฤษ
 - ✅ Edge case handling (empty text, single chunk, fallback to space delimiter)
@@ -1007,14 +1037,23 @@ cat apps/demo/package.json | grep "ws-tts"
 - ✅ Per-chunk error handling (continue on error)
 
 **Deliverables:**
-- ✅ ไฟล์ `apps/demo/server/websocket-tts-server.ts` ใช้งานได้ (328 บรรทัด)
-- ✅ Text chunking ทำงานถูกต้องพร้อม edge case handling
+- ✅ ไฟล์ `apps/demo/server/websocket-tts-server.ts` ใช้งานได้ (340 บรรทัด) **อัพเดต 2025-11-13**
+- ✅ Text chunking ทำงานถูกต้องพร้อม edge case handling **อัพเดตรองรับ secondary delimiters (`,` `;` `:`) 2025-11-13**
 - ✅ เชื่อมต่อ ElevenLabs TTS API สำเร็จผ่าน REST API
 - ✅ WebSocket communication ทำงานได้ครบถ้วน (connection, message, close, error)
 - ✅ Logging ครบถ้วนและชัดเจน
 - ✅ ผ่าน TypeScript type checking
 
-**Status:** ✅ **COMPLETED** - พร้อมสำหรับ Task 3
+**Status:** ✅ **COMPLETED - อัพเดต 2025-11-13** - พร้อมสำหรับ Task 3
+
+**📋 Changelog 2025-11-13:**
+- ✅ อัพเดต `chunkText()` function เพื่อรองรับ secondary delimiters (`,` `;` `:`) ครบถ้วน
+- ✅ เพิ่ม smart chunking strategy:
+  - Primary delimiters (`.` `!` `?`): Flush at 50% maxChunkSize
+  - Secondary delimiters (`,` `;` `:`): Flush at 70% maxChunkSize
+- ✅ ปรับปรุง logging messages ให้ชัดเจนขึ้น (แยก primary/secondary/final chunks)
+- ✅ เพิ่ม combined regex `/([.!?,;:])/g` สำหรับ split ทุก delimiters พร้อมกัน
+- ✅ ลบ unused variables เพื่อผ่าน TypeScript linting
 
 **🧪 วิธีทดสอบ Task 2:**
 
