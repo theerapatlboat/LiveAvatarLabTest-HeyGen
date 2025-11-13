@@ -142,6 +142,11 @@ export function useElevenLabsRealtimeSTT(config: ScribeConfig = {}) {
     setPartialText('');
   }, []);
 
+  // Get combined transcript from all segments
+  const getCombinedTranscript = useCallback(() => {
+    return allTranscriptsRef.current.join(' ');
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -155,6 +160,7 @@ export function useElevenLabsRealtimeSTT(config: ScribeConfig = {}) {
     finalText,
     connect,
     disconnect,
-    reset
+    reset,
+    getCombinedTranscript
   };
 }

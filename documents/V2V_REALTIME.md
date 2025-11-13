@@ -1155,12 +1155,52 @@ connection.on(RealtimeEvents.CLOSE, async () => {
 - ✅ ไม่ต้องมี OpenAI/ElevenLabs TTS API keys
 - ✅ **Combined transcript summary** - รวมข้อความทั้งหมดและแสดงเมื่อปิดการเชื่อมต่อ
 - ✅ **Auto transcript reset** - ข้อความถูกรีเซ็ตอัตโนมัติเมื่อเริ่ม session ใหม่
+- ✅ **Voice-to-Voice with Avatar** - เปิดใช้งานแล้ว โดยส่ง combined transcript ไปให้ AI และ Avatar ตอบกลับเป็นเสียง
+
+**Voice-to-Voice Flow (ENABLED):**
+
+การทำงาน:
+1. User กดปุ่ม "Start Realtime Voice Chat" และพูดเข้าไมค์
+2. ElevenLabs Scribe v2 Realtime จะ transcribe เสียงเป็นข้อความแบบ real-time
+3. Transcripts ทั้งหมดถูกรวมเก็บไว้ใน `allTranscriptsRef`
+4. เมื่อ User กดปุ่ม "Stop & Process with Avatar" ระบบจะ:
+   - Disconnect จาก ElevenLabs Realtime STT
+   - ดึง combined transcript จากทั้ง session
+   - ส่งไปให้ OpenAI Chat API (`/api/openai-chat-complete`)
+   - นำ AI response มาแปลงเป็นเสียงด้วย ElevenLabs TTS (`/api/elevenlabs-text-to-speech`)
+   - ส่ง audio ไปให้ Avatar เพื่อทำ lip-sync (`sessionRef.current.repeatAudio()`)
+
+**ไฟล์ที่แก้ไข:**
+- `apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts` - เพิ่ม `getCombinedTranscript()` function
+- `apps/demo/src/components/LiveAvatarSession.tsx` - เพิ่ม `handleVoiceToVoice()` และเชื่อมกับปุ่ม Stop
+
+**Console Output ตัวอย่าง:**
+```
+🎤 [REALTIME STT] Partial transcript: สวัสดี
+✅ [REALTIME STT] Final transcript: สวัสดีครับ
+🔌 CONNECTION CLOSED
+📝 [REALTIME STT] Combined full transcript: สวัสดีครับ
+🚀 [V2V] Starting Voice-to-Voice flow...
+📝 [V2V] Combined transcript: สวัสดีครับ
+🤖 [V2V] Sending to OpenAI...
+✅ [V2V] AI Response: สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ
+🔊 [V2V] Converting to speech...
+✅ [V2V] TTS Audio generated
+👄 [V2V] Sending to Avatar...
+✅ [V2V] Avatar speaking!
+```
+
+**ข้อกำหนดสำหรับการใช้งาน:**
+- ✅ ต้องมี `OPENAI_API_KEY` ใน `.env.local`
+- ✅ ต้องมี `ELEVENLABS_API_KEY` และ `ELEVENLABS_VOICE_ID` ใน `.env.local`
+- ✅ Avatar session ต้อง active อยู่
 
 **Next Steps (Optional):**
-1. 🔄 Uncomment full voice-to-voice flow (OpenAI + TTS + Avatar)
+1. ✅ ~~Uncomment full voice-to-voice flow (OpenAI + TTS + Avatar)~~ - **เสร็จแล้ว!**
 2. 🔄 Auto token refresh mechanism (before 15 min expiry)
 3. 🔄 Auto reconnection with exponential backoff
 4. 🔄 UI loading states during AI processing
+5. 🔄 Add "Process Now" button (ไม่ต้องรอ disconnect)
 
 ---
 

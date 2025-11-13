@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   LiveAvatarContextProvider,
   useSession,
@@ -80,7 +80,7 @@ const LiveAvatarSessionComponent: React.FC<{
   const { sessionRef } = useLiveAvatarContext();
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // ElevenLabs Realtime STT Integration (LOGS ONLY MODE - No OpenAI/TTS)
+  // ElevenLabs Realtime STT Integration with Voice-to-Voice Flow
   const {
     isConnected: isRealtimeSTTConnected,
     partialText: realtimePartialText,
@@ -88,6 +88,7 @@ const LiveAvatarSessionComponent: React.FC<{
     connect: connectRealtimeSTT,
     disconnect: disconnectRealtimeSTT,
     reset: resetRealtimeSTT,
+    getCombinedTranscript,
   } = useElevenLabsRealtimeSTT({
     languageCode: "th",
     onPartialTranscript: (text) => {
@@ -96,42 +97,59 @@ const LiveAvatarSessionComponent: React.FC<{
     onFinalTranscript: async (text) => {
       console.log("✅ [REALTIME STT] Final transcript:", text);
       console.log("📊 [REALTIME STT] Transcript length:", text.length, "characters");
-
-      // TODO: Uncomment below to enable full voice-to-voice flow
-      /*
-      try {
-        // 1. Send transcript to OpenAI Chat API
-        const chatRes = await fetch("/api/openai-chat-complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text }),
-        });
-        const { response: aiResponse } = await chatRes.json();
-        console.log("🤖 AI Response:", aiResponse);
-
-        // 2. Convert AI response to speech using ElevenLabs TTS
-        const ttsRes = await fetch("/api/elevenlabs-text-to-speech", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: aiResponse }),
-        });
-        const { audio } = await ttsRes.json();
-        console.log("🔊 TTS Audio generated");
-
-        // 3. Send audio to Avatar for lip-sync
-        if (sessionRef.current) {
-          await sessionRef.current.repeatAudio(audio);
-          console.log("👄 Avatar speaking");
-        }
-      } catch (error) {
-        console.error("❌ Error in voice-to-voice flow:", error);
-      }
-      */
     },
     onError: (error) => {
       console.error("❌ [REALTIME STT] Error:", error);
     },
   });
+
+  // Voice-to-Voice flow handler
+  const handleVoiceToVoice = useCallback(async () => {
+    try {
+      // Get combined transcript from entire session
+      const combinedText = getCombinedTranscript();
+
+      if (!combinedText || combinedText.trim().length === 0) {
+        console.log("⚠️ No transcript to process");
+        return;
+      }
+
+      console.log("🚀 [V2V] Starting Voice-to-Voice flow...");
+      console.log("📝 [V2V] Combined transcript:", combinedText);
+      console.log("📊 [V2V] Total length:", combinedText.length, "characters");
+
+      // 1. Send combined transcript to OpenAI Chat API
+      console.log("🤖 [V2V] Sending to OpenAI...");
+      const chatRes = await fetch("/api/openai-chat-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: combinedText }),
+      });
+      const { response: aiResponse } = await chatRes.json();
+      console.log("✅ [V2V] AI Response:", aiResponse);
+
+      // 2. Convert AI response to speech using ElevenLabs TTS
+      console.log("🔊 [V2V] Converting to speech...");
+      const ttsRes = await fetch("/api/elevenlabs-text-to-speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: aiResponse }),
+      });
+      const { audio } = await ttsRes.json();
+      console.log("✅ [V2V] TTS Audio generated");
+
+      // 3. Send audio to Avatar for lip-sync
+      if (sessionRef.current) {
+        console.log("👄 [V2V] Sending to Avatar...");
+        await sessionRef.current.repeatAudio(audio);
+        console.log("✅ [V2V] Avatar speaking!");
+      } else {
+        console.warn("⚠️ [V2V] Avatar session not available");
+      }
+    } catch (error) {
+      console.error("❌ [V2V] Error in voice-to-voice flow:", error);
+    }
+  }, [getCombinedTranscript, sessionRef]);
 
   useEffect(() => {
     if (sessionState === SessionState.DISCONNECTED) {
@@ -233,9 +251,14 @@ const LiveAvatarSessionComponent: React.FC<{
         )}
         <div className="flex gap-2 mt-2">
           <Button
-            onClick={() => {
+            onClick={async () => {
               if (isRealtimeSTTConnected) {
+                // First disconnect, then trigger Voice-to-Voice flow
                 disconnectRealtimeSTT();
+                // Wait a moment for the CLOSE event to log combined transcript
+                await new Promise(resolve => setTimeout(resolve, 100));
+                // Trigger Voice-to-Voice flow with combined transcript
+                await handleVoiceToVoice();
               } else {
                 connectRealtimeSTT();
               }
@@ -246,7 +269,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 : "bg-green-500 text-white hover:bg-green-600"
             }`}
           >
-            {isRealtimeSTTConnected ? "Stop Realtime Voice Chat" : "Start Realtime Voice Chat"}
+            {isRealtimeSTTConnected ? "Stop & Process with Avatar" : "Start Realtime Voice Chat"}
           </Button>
           <Button
             onClick={() => {
