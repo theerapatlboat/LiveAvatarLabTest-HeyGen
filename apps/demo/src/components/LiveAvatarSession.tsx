@@ -10,6 +10,8 @@ import {
 } from "../liveavatar";
 import { SessionState } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
+import { useElevenLabsRealtimeSTT } from "../liveavatar/useElevenLabsRealtimeSTT";
+import { useLiveAvatarContext } from "../liveavatar/context";
 
 const Button: React.FC<{
   onClick?: () => void;
@@ -75,7 +77,61 @@ const LiveAvatarSessionComponent: React.FC<{
     useAvatarActions(mode);
 
   const { sendMessage } = useTextChat(mode);
+  const { sessionRef } = useLiveAvatarContext();
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // ElevenLabs Realtime STT Integration (LOGS ONLY MODE - No OpenAI/TTS)
+  const {
+    isConnected: isRealtimeSTTConnected,
+    partialText: realtimePartialText,
+    finalText: realtimeFinalText,
+    connect: connectRealtimeSTT,
+    disconnect: disconnectRealtimeSTT,
+    reset: resetRealtimeSTT,
+  } = useElevenLabsRealtimeSTT({
+    languageCode: "th",
+    onPartialTranscript: (text) => {
+      console.log("🎤 [REALTIME STT] Partial transcript:", text);
+    },
+    onFinalTranscript: async (text) => {
+      console.log("✅ [REALTIME STT] Final transcript:", text);
+      console.log("📊 [REALTIME STT] Transcript length:", text.length, "characters");
+
+      // TODO: Uncomment below to enable full voice-to-voice flow
+      /*
+      try {
+        // 1. Send transcript to OpenAI Chat API
+        const chatRes = await fetch("/api/openai-chat-complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+        const { response: aiResponse } = await chatRes.json();
+        console.log("🤖 AI Response:", aiResponse);
+
+        // 2. Convert AI response to speech using ElevenLabs TTS
+        const ttsRes = await fetch("/api/elevenlabs-text-to-speech", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: aiResponse }),
+        });
+        const { audio } = await ttsRes.json();
+        console.log("🔊 TTS Audio generated");
+
+        // 3. Send audio to Avatar for lip-sync
+        if (sessionRef.current) {
+          await sessionRef.current.repeatAudio(audio);
+          console.log("👄 Avatar speaking");
+        }
+      } catch (error) {
+        console.error("❌ Error in voice-to-voice flow:", error);
+      }
+      */
+    },
+    onError: (error) => {
+      console.error("❌ [REALTIME STT] Error:", error);
+    },
+  });
 
   useEffect(() => {
     if (sessionState === SessionState.DISCONNECTED) {
@@ -162,6 +218,49 @@ const LiveAvatarSessionComponent: React.FC<{
     </>
   );
 
+  const RealtimeSTTComponents = (
+    <>
+      <div className="w-full border-t-2 border-yellow-400 pt-4 mt-4">
+        <h3 className="text-lg font-bold text-yellow-400 mb-2">
+          ElevenLabs Realtime STT (Continuous Voice Chat)
+        </h3>
+        <p>Connected: {isRealtimeSTTConnected ? "true" : "false"}</p>
+        {realtimePartialText && (
+          <p className="text-gray-400 italic">Partial: {realtimePartialText}</p>
+        )}
+        {realtimeFinalText && (
+          <p className="text-white font-semibold">Transcript: {realtimeFinalText}</p>
+        )}
+        <div className="flex gap-2 mt-2">
+          <Button
+            onClick={() => {
+              if (isRealtimeSTTConnected) {
+                disconnectRealtimeSTT();
+              } else {
+                connectRealtimeSTT();
+              }
+            }}
+            className={`px-6 py-3 rounded-md font-semibold transition-all ${
+              isRealtimeSTTConnected
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-green-500 text-white hover:bg-green-600"
+            }`}
+          >
+            {isRealtimeSTTConnected ? "Stop Realtime Voice Chat" : "Start Realtime Voice Chat"}
+          </Button>
+          <Button
+            onClick={() => {
+              resetRealtimeSTT();
+            }}
+            disabled={!isRealtimeSTTConnected}
+          >
+            Reset Transcript
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="w-[1080px] max-w-full h-full flex flex-col items-center justify-center gap-4 py-4">
       <div className="relative w-full aspect-video overflow-hidden flex flex-col items-center justify-center">
@@ -187,6 +286,7 @@ const LiveAvatarSessionComponent: React.FC<{
         <p>Avatar talking: {isAvatarTalking ? "true" : "false"}</p>
         {mode === "FULL" && VoiceChatComponents}
         {mode === "CUSTOM" && CustomVoiceChatComponents}
+        {mode === "CUSTOM" && RealtimeSTTComponents}
         <Button
           onClick={() => {
             keepAlive();

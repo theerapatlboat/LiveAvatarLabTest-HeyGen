@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(\"documents/V2V_REALTIME_BACKUP.md\")",
+      "Bash(\"documents/V2V_REALTIME_TEMP.md\")",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(dir /s /b appsdemoappapi*elevenlabs* 2)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []
