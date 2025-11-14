@@ -674,46 +674,910 @@ pnpm dev
 
 #### **Task 4: Integration with Voice-to-Voice Flow** ❌ (Estimated: 1.5-2 hours)
 
-**Step 4.1: แก้ไข LiveAvatarSession Component**
-- Import `useWebSocketTTS` hook
-- Add WebSocket TTS state management  
-- Connect to WebSocket server on component mount
-- Disconnect on unmount
+**Goal:** เชื่อมต่อ WebSocket TTS เข้ากับ V2V flow ที่มีอยู่ใน LiveAvatarSession component เพื่อแทนที่ REST API TTS ด้วย WebSocket TTS แบบ progressive playback
 
-**Step 4.2: Integrate กับ Phase 4 (Realtime STT)**
-- ใช้ `getCombinedTranscript()` จาก useElevenLabsRealtimeSTT
-- เมื่อ user กด "Stop & Process with Avatar":
-  - Get transcript from Realtime STT
-  - Send to OpenAI Chat API
-  - Get AI response
-  - Send to WebSocket TTS (แทน REST API)
+---
 
-**Step 4.3: Update UI Controls**
-- เพิ่ม TTS progress indicator
-- แสดงสถานะ WebSocket connection
-- Disable controls ขณะ synthesizing
-- Show error messages
+**Step 4.1: Import และ Setup WebSocket TTS Hook** (15-20 นาที)
 
-**Deliverables:**
-- LiveAvatarSession component integrated with WebSocket TTS
-- Complete V2V flow with reduced latency (~1.5-2.5s)
-- UI controls showing connection status and progress
+**ไฟล์:** `apps/demo/src/components/LiveAvatarSession.tsx`
 
-**วิธีทดสอบ:**
+**4.1.1: เพิ่ม Import Statement**
+```typescript
+// เพิ่มใน imports section (บรรทัด 1-13)
+import { useWebSocketTTS } from "../liveavatar/useWebSocketTTS";
+```
+
+**4.1.2: Initialize useWebSocketTTS Hook**
+```typescript
+// เพิ่มหลัง useElevenLabsRealtimeSTT hook (หลังบรรทัด 104)
+const {
+  isConnected: isWSTTSConnected,
+  isSynthesizing: isWSTTSSynthesizing,
+  progress: wsTTSProgress,
+  connect: connectWSTTS,
+  disconnect: disconnectWSTTS,
+  synthesize: synthesizeWSTTS,
+} = useWebSocketTTS({
+  wsUrl: 'ws://localhost:3013/ws/elevenlabs-tts',
+  voiceId: 'moBQ5vcoHD68Es6NqdGR', // George (English) - เปลี่ยนได้ตามต้องการ
+  modelId: 'eleven_v3',
+  autoConnect: false, // จะ connect manual ใน useEffect
+  onAudioChunk: (chunkIndex, totalChunks, text) => {
+    console.log(`🔊 [WS-TTS] Chunk ${chunkIndex + 1}/${totalChunks}: "${text}"`);
+  },
+  onComplete: (totalChunks) => {
+    console.log(`✅ [WS-TTS] Completed - Total ${totalChunks} chunks`);
+  },
+  onError: (error) => {
+    console.error('❌ [WS-TTS] Error:', error);
+  },
+  onConnectionChange: (connected) => {
+    console.log(`🔌 [WS-TTS] Connection status: ${connected ? 'connected' : 'disconnected'}`);
+  }
+});
+```
+
+**4.1.3: เพิ่ม useEffect สำหรับ Auto-Connect/Disconnect**
+```typescript
+// เพิ่มหลัง useEffect ที่มีอยู่ (หลังบรรทัด 171)
+useEffect(() => {
+  // Auto-connect to WebSocket TTS when component mounts (CUSTOM mode only)
+  if (mode === 'CUSTOM') {
+    console.log('🔌 [WS-TTS] Connecting to WebSocket TTS server...');
+    connectWSTTS();
+  }
+
+  // Cleanup: disconnect when component unmounts
+  return () => {
+    if (mode === 'CUSTOM') {
+      console.log('🔌 [WS-TTS] Disconnecting from WebSocket TTS server...');
+      disconnectWSTTS();
+    }
+  };
+}, [mode, connectWSTTS, disconnectWSTTS]);
+```
+
+---
+
+**Step 4.2: แก้ไข handleVoiceToVoice() เพื่อใช้ Progressive Lip-sync กับ Avatar** (1-1.5 ชั่วโมง)
+
+**ไฟล์:** `apps/demo/src/components/LiveAvatarSession.tsx`
+
+**🎯 เป้าหมาย:** ส่ง audio chunks ไปยัง HeyGen Avatar `repeatAudio()` แบบ Progressive (ทีละ chunk) เพื่อให้ Avatar lip-sync แบบ real-time โดยไม่ต้องรอให้ synthesis เสร็จทั้งหมด
+
+---
+
+**📋 หลักการทำงาน (Progressive Lip-sync Flow):**
+
+```
+WebSocket TTS Server → Audio Chunks → Queue → Sequential Processing → Avatar Lip-sync
+
+Step 1: User Speech → OpenAI Chat → AI Response
+Step 2: Send AI Response → WebSocket TTS → Text Chunking (delimiter-based)
+Step 3: Each Chunk → ElevenLabs TTS → Audio Chunk (base64 MP3)
+Step 4: Receive Chunk → Add to Queue → Process Immediately
+Step 5: Send to repeatAudio() → Wait for Duration → Next Chunk
+Step 6: Repeat until all chunks complete → Avatar finishes speaking
+```
+
+**🔑 Key Concepts:**
+
+1. **Non-blocking Synthesis:** WebSocket TTS ส่ง chunks มาทีละส่วน (ไม่ต้องรอทั้งหมด)
+2. **Sequential Queue:** Chunks ถูกเก็บใน queue และเล่นตามลำดับ
+3. **Progressive Playback:** Chunk แรกเริ่มเล่นทันทีที่ได้รับ (ลด latency ~40-50%)
+4. **Event-based Timing:** ใช้ `AVATAR_SPEAK_ENDED` event เพื่อรับสัญญาณเมื่อ Avatar พูดเสร็จแต่ละ chunk
+
+---
+
+**🔧 Implementation แบบละเอียด:**
+
+**Step 4.2.1: เพิ่ม Helper Function สำหรับคำนวณ Audio Duration** (5-10 นาที)
+
+**ตำแหน่ง:** เพิ่มก่อนฟังก์ชัน `LiveAvatarSessionComponent` (บรรทัด ~40)
+
+```typescript
+/**
+ * คำนวณ duration ของ audio data (base64 MP3)
+ * ใช้สำหรับ wait time ในการเล่น chunk แบบ sequential
+ *
+ * @param base64Audio - base64 encoded audio (mp3_44100_128 format)
+ * @returns duration in seconds (approximate)
+ */
+async function getAudioDuration(base64Audio: string): Promise<number> {
+  try {
+    // Step 1: Decode base64 to ArrayBuffer
+    const binaryString = atob(base64Audio);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const audioBuffer = bytes.buffer;
+
+    // Step 2: Create audio context and decode
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const decodedBuffer = await audioContext.decodeAudioData(audioBuffer);
+
+    // Step 3: Get duration from decoded buffer
+    const duration = decodedBuffer.duration;
+    console.log(`⏱️ [Audio Duration] Calculated: ${duration.toFixed(2)}s`);
+
+    // Step 4: Close audio context to prevent memory leaks
+    await audioContext.close();
+
+    return duration;
+  } catch (error) {
+    console.error('❌ [Audio Duration] Error calculating duration:', error);
+
+    // Fallback: estimate based on file size
+    // MP3 128kbps ≈ 16KB/s, base64 encoding adds ~33% overhead
+    const estimatedDuration = (base64Audio.length * 0.75) / (16 * 1024);
+    console.warn(`⚠️ [Audio Duration] Using estimated duration: ${estimatedDuration.toFixed(2)}s`);
+
+    return estimatedDuration;
+  }
+}
+```
+
+**เหตุผล:**
+- ต้องรู้ duration ของแต่ละ chunk เพื่อรอให้เล่นเสร็จก่อนส่ง chunk ถัดไป
+- ใช้ Web Audio API `decodeAudioData()` เพื่อความแม่นยำ
+- มี fallback calculation ถ้า decode ไม่สำเร็จ
+
+---
+
+**Step 4.2.2: เพิ่ม State และ Refs สำหรับ Progressive Lip-sync** (5-10 นาที)
+
+**ตำแหน่ง:** ใน `LiveAvatarSessionComponent` component (หลังบรรทัด 80)
+
+```typescript
+// เพิ่มหลัง: const { sessionRef } = useLiveAvatarContext();
+
+// State สำหรับ Progressive Lip-sync
+const audioChunksQueueRef = useRef<Array<{ audio: string; text: string }>>([]);
+const isProcessingChunkRef = useRef(false);
+```
+
+**คำอธิบาย:**
+- `audioChunksQueueRef`: เก็บ queue ของ audio chunks ที่รอส่งไปยัง Avatar
+- `isProcessingChunkRef`: flag ป้องกันการประมวลผล chunk หลายตัวพร้อมกัน
+
+---
+
+**Step 4.2.3: สร้างฟังก์ชัน processNextAudioChunk()** (15-20 นาที)
+
+**ตำแหน่ง:** เพิ่มหลัง `handleVoiceToVoice` function (บรรทัด ~152)
+
+```typescript
+/**
+ * ส่ง audio chunk ไปยัง Avatar แบบ sequential
+ * ทำงานแบบ recursive: process chunk → wait → process next chunk
+ */
+const processNextAudioChunk = useCallback(async () => {
+  // Step 1: Check if already processing
+  if (isProcessingChunkRef.current) {
+    console.log('⏸️ [Avatar] Already processing a chunk, waiting...');
+    return;
+  }
+
+  // Step 2: Check if queue is empty
+  if (audioChunksQueueRef.current.length === 0) {
+    console.log('✅ [Avatar] All audio chunks processed');
+    isProcessingChunkRef.current = false;
+    return;
+  }
+
+  // Step 3: Mark as processing
+  isProcessingChunkRef.current = true;
+
+  // Step 4: Get next chunk from queue
+  const chunk = audioChunksQueueRef.current.shift();
+  if (!chunk || !sessionRef.current) {
+    console.warn('⚠️ [Avatar] No chunk or session not available');
+    isProcessingChunkRef.current = false;
+    return;
+  }
+
+  try {
+    const { audio, text } = chunk;
+    console.log(`👄 [Avatar] Processing chunk: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`);
+
+    // Step 5: Calculate audio duration
+    const duration = await getAudioDuration(audio);
+    console.log(`⏱️ [Avatar] Chunk duration: ${duration.toFixed(2)}s`);
+
+    // Step 6: Send to Avatar for lip-sync
+    sessionRef.current.repeatAudio(audio);
+    console.log('✅ [Avatar] Chunk sent to Avatar, lip-sync started');
+
+    // Step 7: Wait for duration + buffer (50ms safety margin)
+    const waitTime = (duration + 0.05) * 1000; // Convert to ms
+    console.log(`⏸️ [Avatar] Waiting ${(waitTime / 1000).toFixed(2)}s for chunk to finish...`);
+
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    console.log('✅ [Avatar] Chunk playback finished');
+
+    // Step 8: Mark as not processing
+    isProcessingChunkRef.current = false;
+
+    // Step 9: Process next chunk (recursive call)
+    if (audioChunksQueueRef.current.length > 0) {
+      console.log(`📦 [Avatar] ${audioChunksQueueRef.current.length} chunks remaining in queue`);
+      processNextAudioChunk();
+    } else {
+      console.log('🎉 [Avatar] All chunks processed successfully!');
+    }
+
+  } catch (error) {
+    console.error('❌ [Avatar] Error processing chunk:', error);
+    isProcessingChunkRef.current = false;
+
+    // Continue with next chunk even if this one failed
+    if (audioChunksQueueRef.current.length > 0) {
+      console.log('⚠️ [Avatar] Continuing with next chunk despite error...');
+      processNextAudioChunk();
+    }
+  }
+}, [sessionRef]);
+```
+
+**หลักการทำงาน:**
+1. ตรวจสอบว่ากำลัง process chunk อยู่หรือไม่
+2. ดึง chunk จาก queue
+3. คำนวณ duration ของ audio
+4. ส่งไปยัง `repeatAudio()` (Avatar เริ่ม lip-sync)
+5. รอตาม duration + buffer 50ms
+6. เรียก `processNextAudioChunk()` อีกครั้ง (recursive)
+
+---
+
+**Step 4.2.4: แก้ไข useWebSocketTTS Config เพื่อรับ audio_data** (10-15 นาที)
+
+**ตำแหน่ง:** แก้ไข `useWebSocketTTS` config (บรรทัด ~104)
+
+**โค้ดเดิม:**
+```typescript
+const {
+  // ... existing code
+} = useWebSocketTTS({
+  wsUrl: 'ws://localhost:3013/ws/elevenlabs-tts',
+  voiceId: 'moBQ5vcoHD68Es6NqdGR',
+  modelId: 'eleven_v3',
+  autoConnect: false,
+  onAudioChunk: (chunkIndex, totalChunks, text) => {
+    console.log(`🔊 [WS-TTS] Chunk ${chunkIndex + 1}/${totalChunks}: "${text}"`);
+  },
+  // ... rest
+});
+```
+
+**โค้ดใหม่:**
+```typescript
+const {
+  isConnected: isWSTTSConnected,
+  isSynthesizing: isWSTTSSynthesizing,
+  progress: wsTTSProgress,
+  connect: connectWSTTS,
+  disconnect: disconnectWSTTS,
+  synthesize: synthesizeWSTTS,
+} = useWebSocketTTS({
+  wsUrl: 'ws://localhost:3013/ws/elevenlabs-tts',
+  voiceId: 'moBQ5vcoHD68Es6NqdGR', // George (English)
+  modelId: 'eleven_v3',
+  autoConnect: false,
+
+  // 🆕 Handle audio chunks for progressive lip-sync
+  onAudioChunk: (chunkIndex, totalChunks, text, audioData) => {
+    console.log(`📦 [WS-TTS] Received chunk ${chunkIndex + 1}/${totalChunks}: "${text.substring(0, 30)}..."`);
+
+    // Add chunk to queue
+    audioChunksQueueRef.current.push({
+      audio: audioData, // base64 audio data
+      text: text
+    });
+
+    // Start processing if this is the first chunk
+    if (chunkIndex === 0 && !isProcessingChunkRef.current) {
+      console.log('🎬 [WS-TTS] Starting progressive lip-sync with first chunk');
+      processNextAudioChunk();
+    }
+  },
+
+  onComplete: (totalChunks) => {
+    console.log(`✅ [WS-TTS] Synthesis completed - Total ${totalChunks} chunks`);
+  },
+
+  onError: (error) => {
+    console.error('❌ [WS-TTS] Error:', error);
+  },
+
+  onConnectionChange: (connected) => {
+    console.log(`🔌 [WS-TTS] Connection: ${connected ? 'Connected' : 'Disconnected'}`);
+  }
+});
+```
+
+**หมายเหตุ:** ต้องแก้ไข `useWebSocketTTS.ts` เพื่อส่ง `audioData` parameter (ดู Step 5)
+
+---
+
+**Step 4.2.5: แก้ไข handleVoiceToVoice() ฉบับสมบูรณ์** (20-30 นาที)
+
+**ตำแหน่ง:** แทนที่ฟังก์ชัน `handleVoiceToVoice` ที่มีอยู่ (บรรทัด 107-152)
+
+**🎯 Goal:** ส่ง audio chunks ไปยัง HeyGen Avatar `repeatAudio()` แบบทีละ chunk เพื่อ lip-sync แบบ progressive (ไม่ต้องรอให้ synthesis เสร็จทั้งหมด)
+
+**💡 Solution Overview:**
+
+```
+Flow: WebSocket TTS → Audio Chunk → repeatAudio() → Wait for playback → Next Chunk
+      (Chunk 1) ────→ Avatar Lip-sync ────────→ (Chunk 2) ────→ Avatar Lip-sync ────→ ...
+```
+
+**หลักการ:**
+1. เมื่อได้ chunk แรก → ส่งไป `repeatAudio()` ทันที (ไม่รอ chunk อื่น)
+2. รอให้ Avatar เล่น chunk นั้นเสร็จ โดยใช้ `AVATAR_SPEAK_ENDED` event
+3. เมื่อ chunk ก่อนหน้าเล่นเสร็จ → ส่ง chunk ถัดไปไปยัง `repeatAudio()`
+4. วนซ้ำจนครบทุก chunks
+
+---
+
+**🔧 Implementation: Sequential repeatAudio() with Event-based Timing**
+
+**วิธีการ:**
+- ส่ง audio chunk ไปยัง `repeatAudio()` ทีละ chunk
+- รอ `AVATAR_SPEAK_ENDED` event เมื่อ Avatar พูดเสร็จแต่ละ chunk
+- เมื่อได้รับ event → ส่ง chunk ถัดไปทันที
+
+**ข้อดี:**
+- ✅ **Timing แม่นยำ 100%** (ไม่มี drift เพราะใช้ event จริงจาก Avatar)
+- ✅ **Latency ต่ำที่สุด** (~1.8s, ไม่ต้องใส่ buffer)
+- ✅ **HeyGen API รองรับเต็มรูปแบบ** (มี `AVATAR_SPEAK_ENDED` event พร้อมใช้)
+- ✅ **Progressive lip-sync** เห็น Avatar พูดทันทีที่ได้ chunk แรก
+
+---
+
+**✅ การตรวจสอบ HeyGen Avatar API:**
+
+จากการวิเคราะห์ HeyGen LiveAvatar SDK source code:
+
+**ไฟล์:** `packages/js-sdk/src/LiveAvatarSession/events.ts`
+
+**พบว่า HeyGen API รองรับ Event-based timing ผ่าน:**
+
+```typescript
+export enum AgentEventsEnum {
+  AVATAR_SPEAK_STARTED = "avatar.speak_started",  // ✅ เริ่มพูด
+  AVATAR_SPEAK_ENDED = "avatar.speak_ended",      // ✅ พูดเสร็จ (ใช้ตรงนี้!)
+}
+
+export type AgentEventCallbacks = {
+  [AgentEventsEnum.AVATAR_SPEAK_STARTED]: (
+    event: AgentEventData<AgentEventsEnum.AVATAR_SPEAK_STARTED>
+  ) => void;
+  [AgentEventsEnum.AVATAR_SPEAK_ENDED]: (
+    event: AgentEventData<AgentEventsEnum.AVATAR_SPEAK_ENDED>
+  ) => void;
+  // ... other events
+};
+```
+
+**สรุป:**
+- ✅ **HeyGen Avatar รองรับ `AVATAR_SPEAK_ENDED` event**
+- ✅ Event จะ emit เมื่อ Avatar พูด chunk เสร็จ
+- ✅ สามารถใช้ Event-based Progressive Lip-sync ได้อย่างสมบูรณ์!
+
+---
+
+**Code Implementation (Event-based):**
+
+```typescript
+// ========== Step 1: Setup Event Listeners ==========
+
+import { AgentEventsEnum } from '@heygen/liveavatar-web-sdk';
+
+// เพิ่ม state สำหรับ Progressive Lip-sync
+const audioChunksQueueRef = useRef<Array<{ audio: string; text: string }>>([]);
+const isProcessingChunkRef = useRef(false);
+const currentChunkResolveRef = useRef<(() => void) | null>(null);
+
+// ========== Step 2: Setup Avatar Event Listener ==========
+
+useEffect(() => {
+  if (!sessionRef.current) return;
+
+  // Listen to AVATAR_SPEAK_ENDED event
+  const handleAvatarSpeakEnded = (event: any) => {
+    console.log('✅ [Avatar] AVATAR_SPEAK_ENDED event received:', event.event_id);
+
+    // Resolve the waiting promise
+    if (currentChunkResolveRef.current) {
+      currentChunkResolveRef.current();
+      currentChunkResolveRef.current = null;
+    }
+  };
+
+  // Attach event listener
+  sessionRef.current.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, handleAvatarSpeakEnded);
+
+  // Cleanup on unmount
+  return () => {
+    if (sessionRef.current) {
+      sessionRef.current.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, handleAvatarSpeakEnded);
+    }
+  };
+}, []);
+
+// ========== Step 3: Process Audio Chunks with Event-based Timing ==========
+
+/**
+ * ส่ง audio chunk ไปยัง Avatar แบบ sequential (Event-based)
+ */
+const processNextAudioChunk = useCallback(async () => {
+  // Check if already processing
+  if (isProcessingChunkRef.current) {
+    console.log('⏸️ Already processing a chunk, waiting...');
+    return;
+  }
+
+  // Check if queue is empty
+  if (audioChunksQueueRef.current.length === 0) {
+    console.log('✅ All audio chunks processed');
+    isProcessingChunkRef.current = false;
+    return;
+  }
+
+  isProcessingChunkRef.current = true;
+
+  // Get next chunk
+  const chunk = audioChunksQueueRef.current.shift();
+  if (!chunk || !sessionRef.current) {
+    isProcessingChunkRef.current = false;
+    return;
+  }
+
+  try {
+    const { audio, text } = chunk;
+    console.log(`👄 [Avatar] Sending chunk to Avatar: "${text.substring(0, 30)}..."`);
+
+    // Create a Promise that resolves when AVATAR_SPEAK_ENDED event fires
+    const waitForAvatarSpeakEnd = new Promise<void>((resolve) => {
+      currentChunkResolveRef.current = resolve;
+    });
+
+    // Send to Avatar (non-blocking)
+    sessionRef.current.repeatAudio(audio);
+    console.log('📤 [Avatar] Chunk sent, waiting for AVATAR_SPEAK_ENDED event...');
+
+    // Wait for AVATAR_SPEAK_ENDED event
+    await waitForAvatarSpeakEnd;
+    console.log('✅ [Avatar] Chunk playback finished (event-based)');
+
+    // Mark as not processing
+    isProcessingChunkRef.current = false;
+
+    // Process next chunk
+    if (audioChunksQueueRef.current.length > 0) {
+      processNextAudioChunk();
+    }
+
+  } catch (error) {
+    console.error('❌ [Avatar] Error processing chunk:', error);
+    isProcessingChunkRef.current = false;
+    currentChunkResolveRef.current = null;
+
+    // Continue with next chunk even if this one failed
+    if (audioChunksQueueRef.current.length > 0) {
+      processNextAudioChunk();
+    }
+  }
+}, []);
+
+// ========== Step 4: Setup WebSocket listener และ handleVoiceToVoice() ==========
+// ใช้ Event-based timing สำหรับ Progressive Lip-sync
+
+const handleVoiceToVoice = useCallback(async () => {
+  try {
+    const combinedText = getCombinedTranscript();
+    if (!combinedText || combinedText.trim().length === 0) return;
+
+    console.log("🚀 [V2V] Starting Voice-to-Voice flow...");
+    audioChunksQueueRef.current = [];
+    isProcessingChunkRef.current = false;
+    currentChunkResolveRef.current = null;
+
+    // 1. OpenAI Chat
+    const chatRes = await fetch("/api/openai-chat-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: combinedText }),
+    });
+    const { response: aiResponse } = await chatRes.json();
+    console.log("✅ [V2V] AI Response:", aiResponse);
+
+    // 2. Setup WebSocket listener for progressive lip-sync
+    // (ใช้ onAudioChunk callback จาก useWebSocketTTS)
+
+    // 3. Synthesize
+    if (!isWSTTSConnected) {
+      await connectWSTTS();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    await synthesizeWSTTS(aiResponse);
+
+    // Wait for all chunks to be processed
+    while (isWSTTSSynthesizing || audioChunksQueueRef.current.length > 0 || isProcessingChunkRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    console.log("✅ [V2V] Voice-to-Voice flow with event-based lip-sync completed!");
+
+  } catch (error) {
+    console.error("❌ [V2V] Error:", error);
+  }
+}, [getCombinedTranscript, isWSTTSConnected, connectWSTTS, synthesizeWSTTS, isWSTTSSynthesizing, processNextAudioChunk]);
+```
+
+---
+
+**⚠️ ข้อควรระวัง (Event-based):**
+
+1. **Event Listener Cleanup:**
+   - ต้อง `off()` event listener ใน cleanup function เพื่อป้องกัน memory leaks
+   ```typescript
+   return () => {
+     sessionRef.current?.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, handler);
+   };
+   ```
+
+2. **Multiple Chunks:**
+   - ถ้าส่ง chunks หลายๆ chunk พร้อมกัน → events อาจ fire ไม่ตรงลำดับ
+   - **Solution:** ต้องส่งทีละ chunk และรอ event ก่อนส่ง chunk ถัดไป (ทำแล้วใน code ด้านบน)
+
+3. **Event Timeout:**
+   - ถ้า event ไม่ fire (เช่น Avatar error) → code จะค้างตลอด
+   - **Solution:** เพิ่ม timeout ให้ Promise
+   ```typescript
+   const waitForAvatarSpeakEnd = Promise.race([
+     new Promise<void>((resolve) => {
+       currentChunkResolveRef.current = resolve;
+     }),
+     new Promise<void>((_, reject) =>
+       setTimeout(() => reject(new Error('Timeout waiting for AVATAR_SPEAK_ENDED')), 30000)
+     )
+   ]);
+   ```
+
+4. **Event Data:**
+   - `AVATAR_SPEAK_ENDED` event มี `event_id` ที่สามารถใช้ track chunk ได้
+   - แต่ไม่มี chunk index → ต้องจัดการ queue เอง
+
+---
+
+**📋 Step 5: Required Modifications to useWebSocketTTS.ts**
+
+เพื่อให้ Event-based Progressive Lip-sync ทำงานได้ ต้องแก้ไข `useWebSocketTTS.ts`:
+
+**5.1: เพิ่ม audio_data ใน onAudioChunk callback**
+
+```typescript
+// ไฟล์: apps/demo/src/liveavatar/useWebSocketTTS.ts
+
+// แก้ไข interface TTSConfig
+export interface TTSConfig {
+  // ... existing fields
+  /** Callback when audio chunk is received */
+  onAudioChunk?: (
+    chunkIndex: number,
+    totalChunks: number,
+    text: string,
+    audioData: string // 🆕 เพิ่ม audio_data (base64)
+  ) => void;
+  // ... rest of fields
+}
+
+// แก้ไข handleAudioChunk function
+const handleAudioChunk = useCallback((message: AudioChunkMessage) => {
+  const { chunk_index, total_chunks, audio_data, text } = message;
+
+  console.log(`📦 Received audio chunk ${chunk_index + 1}/${total_chunks}`);
+
+  // Update progress
+  setProgress({
+    current: chunk_index + 1,
+    total: total_chunks,
+    currentText: text,
+  });
+
+  // 🆕 Trigger callback with audio_data
+  callbacksRef.current.onAudioChunk?.(chunk_index, total_chunks, text, audio_data);
+
+  // ... existing audio processing code
+}, [playNextChunk]);
+```
+
+**5.2: (Optional) Expose WebSocket ref สำหรับ advanced use cases**
+
+```typescript
+// Return WebSocket ref จาก hook
+return {
+  // ... existing returns
+  wsRef, // 🆕 Expose WebSocket ref (for advanced users)
+};
+```
+
+---
+
+**🎯 แนะนำสำหรับนักพัฒนา:**
+
+**ขั้นตอนที่ 1: ทดสอบ Option 1 ก่อน (Direct Web Audio Playback)**
+- Implementation ง่าย ไม่ต้องแก้โค้ดมาก
+- ทดสอบว่า latency และ UX เป็นยังไง
+- **ถ้า:** ไม่ต้องการ lip-sync (เช่น audio-only mode) → ใช้ Option 1
+
+**ขั้นตอนที่ 2: ตรวจสอบ HeyGen Avatar API**
+```typescript
+// ทดสอบว่า repeatAudio() return Promise หรือไม่
+const result = await sessionRef.current.repeatAudio(audio);
+console.log('repeatAudio result:', result);
+
+// หรือตรวจสอบว่ามี event listeners หรือไม่
+console.log('Available methods:', Object.keys(sessionRef.current));
+```
+
+**ขั้นตอนที่ 3: Implement Event-based Progressive Lip-sync**
+- ✅ **HeyGen Avatar API รองรับ `AVATAR_SPEAK_ENDED` event แล้ว**
+- แก้ไข `useWebSocketTTS.ts` ตาม Step 5
+- Implement Event-based timing ตามโค้ดด้านบน
+- Setup event listeners และ cleanup handlers
+
+**ขั้นตอนที่ 4: Testing และ Validation**
+- ทดสอบกับ text ยาว/สั้น, ภาษาไทย/อังกฤษ
+- ตรวจสอบว่า Avatar lip-sync ตรงกับ audio
+- วัด latency และเปรียบเทียบกับ REST API TTS
+- ทดสอบ error handling (network fail, event timeout)
+
+**ขั้นตอนที่ 5: Fine-tuning**
+- เพิ่ม timeout สำหรับ event (ป้องกัน hang ถ้า event ไม่ fire)
+- ปรับ chunk size delimiters (ถ้า chunks ยาวเกิน)
+- เพิ่ม error recovery (retry mechanism)
+- Optimize queue processing
+
+---
+
+**⚠️ ข้อควรระวัง:**
+
+1. **Event Listener Cleanup:** ต้อง cleanup listeners ใน `useEffect` return เพื่อป้องกัน memory leaks
+2. **Event Timeout:** เพิ่ม timeout เพื่อป้องกัน code ค้างถ้า `AVATAR_SPEAK_ENDED` ไม่ fire
+3. **Queue Management:** ต้องจัดการ queue อย่างระมัดระวังเพื่อไม่ให้ chunks เล่นผิดลำดับ
+4. **Audio Format:** HeyGen `repeatAudio()` รับ base64 MP3 format (mp3_44100_128)
+
+---
+
+**Step 4.3: Update UI Controls** (20-30 นาที)
+
+**ไฟล์:** `apps/demo/src/components/LiveAvatarSession.tsx`
+
+**4.3.1: เพิ่ม WebSocket TTS Status UI**
+
+**ตำแหน่ง:** ใน `RealtimeSTTComponents` section (หลังบรรทัด 251)
+
+**เพิ่มโค้ดนี้:**
+```typescript
+const RealtimeSTTComponents = (
+  <>
+    <div className="w-full border-t-2 border-yellow-400 pt-4 mt-4">
+      <h3 className="text-lg font-bold text-yellow-400 mb-2">
+        ElevenLabs Realtime STT (Continuous Voice Chat)
+      </h3>
+      <p>Connected: {isRealtimeSTTConnected ? "true" : "false"}</p>
+
+      {/* 🆕 เพิ่มส่วนนี้: WebSocket TTS Status */}
+      <div className="mt-2 p-2 bg-gray-800 rounded">
+        <p className="text-sm">
+          <span className="font-semibold">WebSocket TTS:</span>{" "}
+          <span className={isWSTTSConnected ? "text-green-400" : "text-red-400"}>
+            {isWSTTSConnected ? "Connected ✅" : "Disconnected ❌"}
+          </span>
+        </p>
+        {isWSTTSSynthesizing && (
+          <p className="text-sm text-blue-400 mt-1">
+            🔊 Synthesizing... {wsTTSProgress.current}/{wsTTSProgress.total} chunks
+            {wsTTSProgress.currentText && (
+              <span className="text-xs text-gray-400 ml-2">
+                "{wsTTSProgress.currentText.substring(0, 30)}..."
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+      {/* สิ้นสุดส่วนที่เพิ่ม */}
+
+      {realtimePartialText && (
+        <p className="text-gray-400 italic">Partial: {realtimePartialText}</p>
+      )}
+      {realtimeFinalText && (
+        <p className="text-white font-semibold">Transcript: {realtimeFinalText}</p>
+      )}
+      <div className="flex gap-2 mt-2">
+        <Button
+          onClick={async () => {
+            if (isRealtimeSTTConnected) {
+              disconnectRealtimeSTT();
+              await new Promise(resolve => setTimeout(resolve, 100));
+              await handleVoiceToVoice();
+            } else {
+              connectRealtimeSTT();
+            }
+          }}
+          // 🆕 Disable button ขณะ synthesizing
+          disabled={isWSTTSSynthesizing}
+          className={`px-6 py-3 rounded-md font-semibold transition-all ${
+            isRealtimeSTTConnected
+              ? "bg-red-500 text-white hover:bg-red-600"
+              : "bg-green-500 text-white hover:bg-green-600"
+          } ${isWSTTSSynthesizing ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {isWSTTSSynthesizing
+            ? "🔊 Synthesizing..."
+            : isRealtimeSTTConnected
+            ? "Stop & Process with Avatar"
+            : "Start Realtime Voice Chat"}
+        </Button>
+        <Button
+          onClick={() => {
+            resetRealtimeSTT();
+          }}
+          disabled={!isRealtimeSTTConnected || isWSTTSSynthesizing}
+        >
+          Reset Transcript
+        </Button>
+      </div>
+    </div>
+  </>
+);
+```
+
+**4.3.2: เพิ่ม Error Notification UI (Optional)**
+
+```typescript
+// เพิ่ม state สำหรับ error message
+const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+// แก้ไข useWebSocketTTS config
+const {
+  // ... existing config
+  onError: (error) => {
+    console.error('❌ [WS-TTS] Error:', error);
+    setErrorMessage(typeof error === 'string' ? error : error.message);
+    // Auto-clear error after 5 seconds
+    setTimeout(() => setErrorMessage(null), 5000);
+  },
+  // ... rest of config
+} = useWebSocketTTS({ /* ... */ });
+
+// เพิ่ม UI สำหรับแสดง error (ใน RealtimeSTTComponents)
+{errorMessage && (
+  <div className="mt-2 p-3 bg-red-900 border border-red-500 rounded text-red-200 text-sm">
+    ❌ Error: {errorMessage}
+  </div>
+)}
+```
+
+---
+
+**Step 4.4: Testing & Validation** (20-30 นาที)
+
+**4.4.1: ทดสอบ Integration**
 ```bash
 # Terminal 1: Start WebSocket TTS server
+cd apps/demo
 pnpm ws-tts
+
+# ตรวจสอบ output:
+# ✅ WebSocket TTS Server is listening on port 3013
+# 🔗 Connect to: ws://localhost:3013/ws/elevenlabs-tts
 
 # Terminal 2: Start Next.js app
 pnpm dev
 
-# ทดสอบ V2V Flow:
-# 1. เลือก CUSTOM mode
-# 2. Start Realtime Voice Chat
-# 3. พูดข้อความ
-# 4. Stop & Process with Avatar
-# 5. ตรวจสอบว่า Avatar ตอบกลับด้วย WebSocket TTS
+# เปิดเบราว์เซอร์: http://localhost:3012
 ```
+
+**4.4.2: ทดสอบ Complete V2V Flow**
+1. เลือก **CUSTOM mode** → กด "Start Session"
+2. ตรวจสอบ WebSocket TTS status: "Connected ✅"
+3. กด **"Start Realtime Voice Chat"**
+4. พูดข้อความ (เช่น "สวัสดี ฉันชื่ออะไร")
+5. ตรวจสอบ Transcript แสดงข้อความที่พูด
+6. กด **"Stop & Process with Avatar"**
+7. ตรวจสอบ Console Logs:
+   ```
+   🚀 [V2V] Starting Voice-to-Voice flow...
+   📝 [V2V] Combined transcript: สวัสดี ฉันชื่ออะไร
+   🤖 [V2V] Sending to OpenAI...
+   ✅ [V2V] AI Response: สวัสดีครับ ผม...
+   🔊 [V2V] Converting to speech via WebSocket TTS...
+   🔊 [WS-TTS] Chunk 1/3: "สวัสดีครับ,"
+   🔊 [WS-TTS] Chunk 2/3: "ผมคือ AI..."
+   🔊 [WS-TTS] Chunk 3/3: "ยินดีที่ได้รู้จักครับ."
+   ✅ [WS-TTS] Completed - Total 3 chunks
+   ✅ [V2V] Voice-to-Voice flow completed!
+   ```
+8. ตรวจสอบเสียงเล่นแบบ progressive (ได้ยินเสียงทันทีที่ได้ chunk แรก)
+
+**4.4.3: ทดสอบ Error Scenarios**
+- **WebSocket Server Down:** หยุด `pnpm ws-tts` → กด "Stop & Process" → ตรวจสอบ error message แสดง
+- **Network Error:** Disconnect network → ตรวจสอบ reconnection behavior
+- **Long Text:** พูดข้อความยาว (>500 chars) → ตรวจสอบ chunking และ sequential playback
+
+**4.4.4: วัด Performance**
+```typescript
+// เพิ่มใน handleVoiceToVoice() เพื่อวัด latency
+const startTime = performance.now();
+
+// ... existing V2V flow code
+
+const endTime = performance.now();
+console.log(`⏱️ [V2V] Total latency: ${(endTime - startTime) / 1000}s`);
+
+// Target: 1.5-2.5 วินาที (40-50% เร็วกว่า REST API)
+```
+
+---
+
+**Deliverables:**
+✅ LiveAvatarSession component integrated with WebSocket TTS
+✅ Complete V2V flow: Realtime STT → OpenAI → WebSocket TTS → Progressive Audio Playback
+✅ UI shows connection status, synthesis progress, and errors
+✅ Reduced latency ~1.5-2.5s (40-50% improvement over REST API)
+✅ Tested with Thai/English text, long texts, and error scenarios
+
+---
+
+**Common Issues & Solutions:**
+
+**Issue 1:** WebSocket TTS not connecting
+```
+❌ WebSocket connection failed
+```
+**Solution:**
+- ตรวจสอบว่า WebSocket server รันอยู่ (`pnpm ws-tts`)
+- ตรวจสอบ port 3013 ไม่ถูก block โดย firewall
+- ตรวจสอบ URL: `ws://localhost:3013/ws/elevenlabs-tts`
+
+**Issue 2:** Audio ไม่เล่น
+```
+✅ Synthesis completed แต่ไม่ได้ยินเสียง
+```
+**Solution:**
+- ตรวจสอบ AudioContext initialized (`useWebSocketTTS` ทำอัตโนมัติ)
+- ตรวจสอบ browser autoplay policy (ต้อง user interaction ก่อน)
+- ตรวจสอบ audio format (ต้องเป็น mp3_44100_128)
+
+**Issue 3:** Chunks เล่นไม่เรียงลำดับ
+```
+Chunk 3 เล่นก่อน Chunk 1
+```
+**Solution:**
+- `useWebSocketTTS` ใช้ sequential queue อยู่แล้ว
+- ตรวจสอบว่าใช้ hook version ล่าสุด
+- ตรวจสอบ server ส่ง chunk_index ถูกต้อง
+
+---
+
+**Files Modified:**
+- `apps/demo/src/components/LiveAvatarSession.tsx` (main integration)
+
+**Dependencies:**
+- `useWebSocketTTS` hook (already implemented in Task 3)
+- WebSocket TTS Server (already running on port 3013)
+
+**Next Steps:**
+→ ทดสอบครบถ้วนตาม Step 4.4
+→ แก้ไข bugs ที่เจอ (ถ้ามี)
+→ ไปต่อ Task 5: Testing & Documentation
 
 ---
 
