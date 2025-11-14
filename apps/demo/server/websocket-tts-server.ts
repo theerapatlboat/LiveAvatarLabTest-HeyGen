@@ -20,6 +20,16 @@ if (ELEVENLABS_API_KEY) {
 
 // Create HTTP server
 const server = createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3012');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('ElevenLabs WebSocket TTS Server is running\n');
 });
@@ -27,7 +37,23 @@ const server = createServer((req, res) => {
 // Create WebSocket server
 const wss = new WebSocketServer({
   server,
-  path: WS_PATH
+  path: WS_PATH,
+  verifyClient: (info, callback) => {
+    const origin = info.req.headers.origin;
+    const allowedOrigins = [
+      'http://localhost:3012',
+      'http://localhost:3013',
+      // เพิ่ม production domains ตามต้องการ
+    ];
+
+    // Allow connections from allowed origins or same-origin (no Origin header)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(true);
+    } else {
+      console.log(`❌ Rejected connection from origin: ${origin}`);
+      callback(false, 403, 'Forbidden');
+    }
+  }
 });
 
 console.log(`🚀 Starting WebSocket TTS server...`);
