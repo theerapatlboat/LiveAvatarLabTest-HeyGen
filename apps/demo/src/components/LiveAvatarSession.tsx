@@ -155,7 +155,30 @@ const LiveAvatarSessionComponent: React.FC<{
         body: JSON.stringify({ message: combinedText }),
       });
       const { response: aiResponse } = await chatRes.json();
-      console.log("✅ [V2V] AI Response:", aiResponse);
+      console.log("✅ [V2V] AI Response (original):", aiResponse);
+
+      // Process AI response: Add periods after sentences with spaces for better TTS chunking
+      let processedResponse = aiResponse;
+      if (aiResponse && aiResponse.trim().length > 0) {
+        // Add period after sentences that end with space (for better chunking)
+        // This helps TTS split into natural chunks at sentence boundaries
+
+        // Strategy: Add periods at multiple strategic points for Thai and English
+        processedResponse = aiResponse
+          // Pattern 1: Before English capital letters (e.g., "hello World" → "hello. World")
+          .replace(/([^\.\!\?])\s+([A-Z])/g, '$1. $2')
+          // Pattern 2: Before Thai words after space (Thai consonants: ก-ฮ)
+          .replace(/([^\.\!\?ก-๙])\s+([ก-ฮ])/g, '$1. $2')
+          // Pattern 3: After Thai ending particles (ครับ, ค่ะ, นะ, จ้า, etc.) followed by space
+          .replace(/(ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|เลย|แล้ว|ล่ะ)\s+/g, '$1. ')
+          // Pattern 4: After Thai question word (ไหม, มั้ย, หรือ, เหรอ) followed by space
+          .replace(/(ไหม|มั้ย|หรือ|เหรอ|รึ)\s+/g, '$1. ')
+          // Pattern 5: Add period at the very end if missing
+          .replace(/([^\.\!\?])\s*$/g, '$1.');
+
+        console.log("📝 [V2V] Processed Response (with periods):", processedResponse);
+        console.log("📊 [V2V] Original length:", aiResponse.length, "→ Processed length:", processedResponse.length);
+      }
 
       // 2. Convert AI response to speech via WebSocket TTS (NEW!)
       console.log("🔊 [V2V] Converting to speech via WebSocket TTS...");
@@ -168,8 +191,8 @@ const LiveAvatarSessionComponent: React.FC<{
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Synthesize via WebSocket
-      await synthesizeWSTTS(aiResponse);
+      // Synthesize via WebSocket (use processed response with periods)
+      await synthesizeWSTTS(processedResponse);
       console.log("✅ [V2V] WebSocket TTS synthesis started");
       console.log("🔊 [V2V] Audio will play automatically via Web Audio API");
 
