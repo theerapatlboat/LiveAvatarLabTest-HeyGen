@@ -98,7 +98,10 @@ export const useCustomVoiceChat = () => {
     // Convert float PCM to 16-bit PCM
     let offset = 44;
     for (let i = 0; i < pcmData.length; i++) {
-      const sample = Math.max(-1, Math.min(1, pcmData[i]));
+      const pcmValue = pcmData[i];
+      // Type guard: ensure pcmValue is defined
+      if (pcmValue === undefined) continue;
+      const sample = Math.max(-1, Math.min(1, pcmValue));
       const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
       view.setInt16(offset, int16, true);
       offset += 2;
@@ -128,7 +131,8 @@ export const useCustomVoiceChat = () => {
       if (preferredDevice) {
         console.log("✨ Found non-Intel device:", preferredDevice.label);
         selectedDeviceId = preferredDevice.deviceId;
-      } else if (audioDevices.length > 1) {
+      } else if (audioDevices.length > 1 && audioDevices[1]) {
+        // Type guard: ensure audioDevices[1] exists
         console.log("🔄 Trying alternative device:", audioDevices[1].label);
         selectedDeviceId = audioDevices[1].deviceId;
       }

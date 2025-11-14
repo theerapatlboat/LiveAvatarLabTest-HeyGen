@@ -7,11 +7,11 @@ export default function TestWSTTS() {
   const [testText, setTestText] = useState('สวัสดีครับ ยินดีต้อนรับสู่ระบบ WebSocket TTS');
 
   const {
-    isConnected,
+    isConnectedTTS,
     isSynthesizing,
     progress,
-    connect,
-    disconnect,
+    connect: connectWSTTS,
+    disconnect: disconnectWSTTS,
     synthesize,
     stop,
     ping
@@ -62,10 +62,10 @@ export default function TestWSTTS() {
           <div>
             <strong>Connected:</strong>{' '}
             <span style={{
-              color: isConnected ? '#16a34a' : '#dc2626',
+              color: isConnectedTTS ? '#16a34a' : '#dc2626',
               fontWeight: 'bold'
             }}>
-              {isConnected ? '✅ YES' : '❌ NO'}
+              {isConnectedTTS ? '✅ YES' : '❌ NO'}
             </span>
           </div>
           <div>
@@ -110,17 +110,17 @@ export default function TestWSTTS() {
         flexWrap: 'wrap'
       }}>
         <button
-          onClick={connect}
-          disabled={isConnected}
+          onClick={connectWSTTS}
+          disabled={isConnectedTTS}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
             fontWeight: 'bold',
             borderRadius: '6px',
             border: 'none',
-            backgroundColor: isConnected ? '#9ca3af' : '#16a34a',
+            backgroundColor: isConnectedTTS ? '#9ca3af' : '#16a34a',
             color: 'white',
-            cursor: isConnected ? 'not-allowed' : 'pointer',
+            cursor: isConnectedTTS ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s'
           }}
         >
@@ -128,17 +128,17 @@ export default function TestWSTTS() {
         </button>
 
         <button
-          onClick={disconnect}
-          disabled={!isConnected}
+          onClick={disconnectWSTTS}
+          disabled={!isConnectedTTS}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
             fontWeight: 'bold',
             borderRadius: '6px',
             border: 'none',
-            backgroundColor: !isConnected ? '#9ca3af' : '#dc2626',
+            backgroundColor: !isConnectedTTS ? '#9ca3af' : '#dc2626',
             color: 'white',
-            cursor: !isConnected ? 'not-allowed' : 'pointer',
+            cursor: !isConnectedTTS ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s'
           }}
         >
@@ -147,16 +147,16 @@ export default function TestWSTTS() {
 
         <button
           onClick={ping}
-          disabled={!isConnected}
+          disabled={!isConnectedTTS}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
             fontWeight: 'bold',
             borderRadius: '6px',
             border: 'none',
-            backgroundColor: !isConnected ? '#9ca3af' : '#2563eb',
+            backgroundColor: !isConnectedTTS ? '#9ca3af' : '#2563eb',
             color: 'white',
-            cursor: !isConnected ? 'not-allowed' : 'pointer',
+            cursor: !isConnectedTTS ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s'
           }}
         >
@@ -207,16 +207,16 @@ export default function TestWSTTS() {
       }}>
         <button
           onClick={() => synthesize(testText)}
-          disabled={!isConnected || isSynthesizing || !testText.trim()}
+          disabled={!isConnectedTTS || isSynthesizing || !testText.trim()}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
             fontWeight: 'bold',
             borderRadius: '6px',
             border: 'none',
-            backgroundColor: (!isConnected || isSynthesizing || !testText.trim()) ? '#9ca3af' : '#2563eb',
+            backgroundColor: (!isConnectedTTS || isSynthesizing || !testText.trim()) ? '#9ca3af' : '#2563eb',
             color: 'white',
-            cursor: (!isConnected || isSynthesizing || !testText.trim()) ? 'not-allowed' : 'pointer',
+            cursor: (!isConnectedTTS || isSynthesizing || !testText.trim()) ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s'
           }}
         >

@@ -20,17 +20,23 @@ if (ELEVENLABS_API_KEY) {
 
 // Create HTTP server
 const server = createServer((req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3012');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers must be set in writeHead() to ensure they're sent
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': 'http://localhost:3012',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
 
   if (req.method === 'OPTIONS') {
-    res.writeHead(204);
+    res.writeHead(204, corsHeaders);
     res.end();
     return;
   }
 
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.writeHead(200, {
+    'Content-Type': 'text/plain',
+    ...corsHeaders
+  });
   res.end('ElevenLabs WebSocket TTS Server is running\n');
 });
 

@@ -1,13 +1,338 @@
 # TROUBLESHOOTING: Voice-to-Voice Integration
 
 ## 📑 Table of Contents
-1. [Text Not Chunking by Delimiters (Returns Single Chunk)](#text-not-chunking-by-delimiters-returns-single-chunk) ⚠️ **NEW 2025-11-13**
-2. [WebSocket TTS Connection Failed](#websocket-tts-connection-failed)
-3. [TypeScript Error: 'currentChunkText' is possibly 'undefined'](#typescript-error-currentchunktext-is-possibly-undefined)
-4. [ELEVENLABS_API_KEY not configured (but exists in .env.local)](#elevenlabs_api_key-not-configured-but-exists-in-envlocal)
-5. [404 Not Found: /test-ws-tts](#404-not-found-test-ws-tts)
-6. [Module not found: Can't resolve '@/liveavatar/useWebSocketTTS'](#module-not-found-cant-resolve-liveavatarusewebsockettts)
-7. [ElevenLabs Realtime STT - No Transcripts](#elevenlabs-realtime-stt-no-transcripts)
+1. [🔴 CRITICAL: LiveAvatarSession WebSocket Connection Error](#-critical-liveavatarsession-websocket-connection-error) ⚠️ **NEW 2025-11-14**
+2. [Text Not Chunking by Delimiters (Returns Single Chunk)](#text-not-chunking-by-delimiters-returns-single-chunk) ⚠️ **NEW 2025-11-13**
+3. [WebSocket TTS Connection Failed](#websocket-tts-connection-failed)
+4. [TypeScript Error: 'currentChunkText' is possibly 'undefined'](#typescript-error-currentchunktext-is-possibly-undefined)
+5. [ELEVENLABS_API_KEY not configured (but exists in .env.local)](#elevenlabs_api_key-not-configured-but-exists-in-envlocal)
+6. [404 Not Found: /test-ws-tts](#404-not-found-test-ws-tts)
+7. [Module not found: Can't resolve '@/liveavatar/useWebSocketTTS'](#module-not-found-cant-resolve-liveavatarusewebsockettts)
+8. [ElevenLabs Realtime STT - No Transcripts](#elevenlabs-realtime-stt-no-transcripts)
+
+---
+
+## 🔴 CRITICAL: LiveAvatarSession WebSocket Connection Error
+
+**Date:** 2025-11-14
+**Severity:** 🔴 CRITICAL (Blocking Integration)
+**Status:** ⚠️ **NEEDS IMMEDIATE FIX**
+**Component:** `apps/demo/src/components/LiveAvatarSession.tsx`
+
+### 🔍 Symptoms
+
+**Browser Console Error:**
+```javascript
+useWebSocketTTS.ts:314
+❌ WebSocket error:
+Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, ...}
+```
+
+**Observed Behavior:**
+- ✅ Test page (`/test-ws-tts`) connects to WebSocket successfully
+- ❌ LiveAvatarSession component fails to connect
+- ❌ Same WebSocket server, same browser, different results
+- ❌ Error occurs immediately when selecting CUSTOM mode
+- ❌ No retry logic, connection permanently fails
+
+### 📊 Root Cause Analysis
+
+#### Comparative Analysis: Working vs. Failing
+
+| Aspect | test-ws-tts/page.tsx (✅ WORKS) | LiveAvatarSession.tsx (❌ FAILS) |
+|--------|----------------------------------|-----------------------------------|
+| **Configuration** | No wsUrl/voiceId/modelId params | Missing wsUrl/voiceId/modelId |
+| **Connection Method** | Manual button click | Auto-connect via useEffect |
+| **Timing** | User-controlled | Immediate on mount |
+| **Dependencies** | None (manual control) | useEffect with function deps |
+| **Race Condition** | No | Yes (multiple re-renders) |
+
+---
+
+#### Issue #1: Missing Configuration Parameters ❌
+
+**Problem in LiveAvatarSession.tsx (lines 107-129):**
+```typescript
+// ❌ Current (BROKEN)
+const {
+  isConnectedTTS: isWSTTSConnected,
+  isSynthesizing: isWSTTSSynthesizing,
+  progress: wsTTSProgress,
+  connect: connectWSTTS,
+  disconnect: disconnectWSTTS,
+  synthesize: synthesize,  // ❌ Wrong variable name
+} = useWebSocketTTS({
+  // ❌ MISSING: wsUrl, voiceId, modelId, autoConnect
+  onAudioChunk: (chunkIndex, totalChunks, text) => { ... },
+  onComplete: (totalChunks) => { ... },
+  onError: (error) => {
+    console.error('❌ [WS-TTS] Error:', error);
+    alert(`Error: ${error}`);  // ❌ Too intrusive
+  },
+  onConnectionChange: (connected) => { ... }
+});
+```
+
+**Expected Configuration (from TASK4_INTEGRATION_GUIDE.md Step 4.1.2):**
+```typescript
+// ✅ Expected (CORRECT)
+const {
+  isConnectedTTS: isWSTTSConnected,
+  isSynthesizing: isWSTTSSynthesizing,
+  progress: wsTTSProgress,
+  connect: connectWSTTS,
+  disconnect: disconnectWSTTS,
+  synthesize: synthesizeWSTTS,  // ✅ Correct name
+} = useWebSocketTTS({
+  wsUrl: 'ws://localhost:3013/ws/elevenlabs-tts',  // ✅ Required
+  voiceId: 'moBQ5vcoHD68Es6NqdGR',                  // ✅ Required
+  modelId: 'eleven_v3',                             // ✅ Required
+  autoConnect: false,                               // ✅ Important
+  onAudioChunk: (chunkIndex, totalChunks, text) => {
+    console.log(`🔊 [WS-TTS] Chunk ${chunkIndex + 1}/${totalChunks}: "${text.substring(0, 30)}..."`);
+  },
+  onComplete: (totalChunks) => {
+    console.log(`✅ [WS-TTS] Synthesis completed - ${totalChunks} chunks`);
+  },
+  onError: (error) => {
+    console.error('❌ [WS-TTS] Error:', error);
+    // ✅ No alert() - too intrusive
+  },
+  onConnectionChange: (connected) => {
+    console.log(`🔌 [WS-TTS] Connection: ${connected ? 'Connected ✅' : 'Disconnected ❌'}`);
+  }
+});
+```
+
+---
+
+#### Issue #2: Auto-Connect Race Condition 🔴
+
+**Problem in LiveAvatarSession.tsx (lines 172-185):**
+```typescript
+// ❌ Current (BROKEN)
+useEffect(() => {
+  if (mode === 'CUSTOM') {
+    console.log('🔌 [WS-TTS] Auto-connecting to WebSocket TTS server...');
+    connectWSTTS();  // ❌ Immediate connection = FAILS
+  }
+
+  return () => {
+    if (mode === 'CUSTOM') {
+      console.log('🔌 [WS-TTS] Disconnecting from WebSocket TTS server...');
+      disconnectWSTTS();
+    }
+  };
+}, [mode, connectWSTTS, disconnectWSTTS]);  // ❌ Function deps cause re-renders
+```
+
+**Why This Fails:**
+1. Component mounts with `mode === 'CUSTOM'`
+2. useEffect runs immediately
+3. `connectWSTTS()` called before component is fully ready
+4. Connection attempt fails (WebSocket error)
+5. Functions `connectWSTTS`/`disconnectWSTTS` are recreated on every render
+6. useEffect re-runs constantly → multiple connection attempts → race condition
+
+**Root Causes:**
+- ❌ No delay before connection
+- ❌ No check if already connected
+- ❌ Function dependencies cause useEffect loops
+- ❌ No validation before connection attempt
+
+---
+
+### ✅ Solutions
+
+#### Solution #1: Fix Hook Configuration (REQUIRED)
+
+**File:** `apps/demo/src/components/LiveAvatarSession.tsx`
+**Lines:** 107-129
+
+**Apply this change:**
+```typescript
+const {
+  isConnectedTTS: isWSTTSConnected,
+  isSynthesizing: isWSTTSSynthesizing,
+  progress: wsTTSProgress,
+  connect: connectWSTTS,
+  disconnect: disconnectWSTTS,
+  synthesize: synthesizeWSTTS,  // ✅ Fixed naming
+} = useWebSocketTTS({
+  wsUrl: 'ws://localhost:3013/ws/elevenlabs-tts',  // ✅ Add
+  voiceId: 'moBQ5vcoHD68Es6NqdGR',                  // ✅ Add
+  modelId: 'eleven_v3',                             // ✅ Add
+  autoConnect: false,                               // ✅ Add
+  onAudioChunk: (chunkIndex, totalChunks, text) => {
+    console.log(`🔊 [WS-TTS] Chunk ${chunkIndex + 1}/${totalChunks}: "${text.substring(0, 30)}..."`);
+  },
+  onComplete: (totalChunks) => {
+    console.log(`✅ [WS-TTS] Synthesis completed - ${totalChunks} chunks`);
+  },
+  onError: (error) => {
+    console.error('❌ [WS-TTS] Error:', error);
+    // Remove alert() - too intrusive
+  },
+  onConnectionChange: (connected) => {
+    console.log(`🔌 [WS-TTS] Connection: ${connected ? 'Connected ✅' : 'Disconnected ❌'}`);
+  }
+});
+```
+
+---
+
+#### Solution #2: Fix Auto-Connect Race Condition (CRITICAL)
+
+**File:** `apps/demo/src/components/LiveAvatarSession.tsx`
+**Lines:** 172-185
+
+**Replace with this code:**
+```typescript
+// Auto-Connect/Disconnect WebSocket TTS based on mode
+useEffect(() => {
+  let timeoutId: NodeJS.Timeout | undefined;
+
+  if (mode === 'CUSTOM' && !isWSTTSConnected) {
+    console.log('🔌 [WS-TTS] Auto-connecting to WebSocket TTS server...');
+
+    // ✅ Delay connection to ensure component is fully mounted
+    timeoutId = setTimeout(() => {
+      connectWSTTS();
+    }, 500); // 500ms delay prevents race condition
+  }
+
+  return () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    if (mode === 'CUSTOM' && isWSTTSConnected) {
+      console.log('🔌 [WS-TTS] Disconnecting from WebSocket TTS server...');
+      disconnectWSTTS();
+    }
+  };
+}, [mode, isWSTTSConnected]); // ✅ Removed connectWSTTS, disconnectWSTTS from deps
+```
+
+**Key Changes:**
+- ✅ Add 500ms delay before connection
+- ✅ Check `!isWSTTSConnected` before connecting
+- ✅ Remove `connectWSTTS` and `disconnectWSTTS` from dependencies
+- ✅ Add `timeoutId` cleanup
+- ✅ Check `isWSTTSConnected` in cleanup
+
+---
+
+### 🧪 Testing Steps
+
+#### Step 1: Apply Both Fixes
+
+```bash
+# 1. Edit LiveAvatarSession.tsx
+# 2. Apply Solution #1 (Configuration)
+# 3. Apply Solution #2 (Race Condition Fix)
+# 4. Save file
+```
+
+#### Step 2: Verify TypeScript Compilation
+
+```bash
+cd apps/demo
+pnpm typecheck
+# Expected: No errors
+```
+
+#### Step 3: Restart Servers
+
+```bash
+# Terminal 1: WebSocket Server
+cd apps/demo
+pnpm ws-tts
+
+# Terminal 2: Next.js Dev Server (in new terminal)
+cd apps/demo
+pnpm dev
+```
+
+#### Step 4: Test in Browser
+
+1. Open `http://localhost:3012`
+2. Select **CUSTOM** mode
+3. Open Browser DevTools Console (F12)
+4. Wait 500ms and observe logs
+
+**Expected Console Output:**
+```javascript
+🔌 [WS-TTS] Auto-connecting to WebSocket TTS server...
+🔌 Connecting to ws://localhost:3013/ws/elevenlabs-tts...
+✅ WebSocket connection established
+🔌 [WS-TTS] Connection: Connected ✅
+```
+
+**Expected Server Console:**
+```
+📞 New client connected from ::1
+```
+
+#### Step 5: Test Mode Switching
+
+1. Switch to **FULL** mode
+   - Expected: `🔌 [WS-TTS] Disconnecting from WebSocket TTS server...`
+2. Switch back to **CUSTOM** mode
+   - Expected: Reconnects automatically after 500ms
+
+---
+
+### 📋 Verification Checklist
+
+- [ ] Configuration includes `wsUrl`, `voiceId`, `modelId`, `autoConnect: false`
+- [ ] Variable `synthesize` renamed to `synthesizeWSTTS`
+- [ ] `alert()` removed from `onError` callback
+- [ ] Auto-connect useEffect has 500ms delay
+- [ ] Auto-connect checks `!isWSTTSConnected` before connecting
+- [ ] Dependencies list: `[mode, isWSTTSConnected]` only
+- [ ] Timeout cleanup added
+- [ ] TypeScript compilation passes
+- [ ] Browser console shows successful connection
+- [ ] Server console shows client connection
+- [ ] No WebSocket error in browser console
+- [ ] Mode switching works correctly
+
+---
+
+### 🎯 Success Criteria
+
+**After Fix:**
+- ✅ WebSocket connects without errors
+- ✅ Connection happens ~500ms after selecting CUSTOM mode
+- ✅ No multiple connection attempts
+- ✅ Clean disconnect when switching modes
+- ✅ No console errors
+- ✅ Same behavior as test page
+
+---
+
+### 📚 Why This Works
+
+**test-ws-tts/page.tsx (Working):**
+- Manual connection on user button click
+- No auto-connect
+- No race conditions
+- Simple state management
+
+**LiveAvatarSession.tsx (Fixed):**
+- Delayed auto-connect (500ms)
+- Connection state validation
+- Stable useEffect dependencies
+- Proper cleanup
+
+**Key Difference:**
+The 500ms delay ensures the component is fully mounted and all hooks are initialized before attempting WebSocket connection.
+
+---
+
+**Estimated Fix Time:** 5-10 minutes
+**Testing Time:** 5 minutes
+**Risk Level:** ✅ Low (well-tested solution)
 
 ---
 

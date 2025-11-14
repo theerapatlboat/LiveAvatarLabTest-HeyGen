@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Connection Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .log {
+      background: #2a2a2a;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #4CAF50;
+      padding-left: 10px;
+    }
+    .log-entry.error {
+      border-color: #f44336;
+    }
+    .log-entry.info {
+      border-color: #2196F3;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebSocket TTS Connection Test</h1>
+  <p><strong>Test URL:</strong> ws://localhost:3013/ws/elevenlabs-tts</p>
+
+  <div>
+    <button id="connectBtn" onclick="connectWebSocket()">Connect</button>
+    <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>Disconnect</button>
+    <button id="pingBtn" onclick="sendPing()" disabled>Send Ping</button>
+    <button id="clearBtn" onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <div class="log" id="logContainer"></div>
+
+  <script>
+    let ws = null;
+    const wsUrl = 'ws://localhost:3013/ws/elevenlabs-tts';
+
+    function log(message, type = 'info') {
+      const logContainer = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('logContainer').innerHTML = '';
+    }
+
+    function updateButtons(connected) {
+      document.getElementById('connectBtn').disabled = connected;
+      document.getElementById('disconnectBtn').disabled = !connected;
+      document.getElementById('pingBtn').disabled = !connected;
+    }
+
+    function connectWebSocket() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        log('⚠️ Already connected', 'error');
+        return;
+      }
+
+      log(`🔌 Connecting to ${wsUrl}...`, 'info');
+
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          log('✅ WebSocket connection established', 'info');
+          updateButtons(true);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            log(`📨 Received: ${message.type} - ${message.message || JSON.stringify(message)}`, 'info');
+          } catch (e) {
+            log(`📨 Received: ${event.data}`, 'info');
+          }
+        };
+
+        ws.onerror = (error) => {
+          log(`❌ WebSocket error: ${error}`, 'error');
+        };
+
+        ws.onclose = (event) => {
+          log(`🔌 Connection closed (code: ${event.code}, reason: ${event.reason || 'No reason'})`, 'info');
+          updateButtons(false);
+          ws = null;
+        };
+      } catch (error) {
+        log(`❌ Failed to create WebSocket: ${error.message}`, 'error');
+      }
+    }
+
+    function disconnectWebSocket() {
+      if (ws) {
+        log('🔌 Disconnecting...', 'info');
+        ws.close();
+      }
+    }
+
+    function sendPing() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const message = { type: 'ping' };
+        ws.send(JSON.stringify(message));
+        log(`📤 Sent: ${JSON.stringify(message)}`, 'info');
+      } else {
+        log('⚠️ Not connected', 'error');
+      }
+    }
+
+    // Auto-connect on page load for testing
+    window.onload = () => {
+      log('📄 Page loaded. Click "Connect" to test WebSocket connection.', 'info');
+      log(`🌐 Current origin: ${window.location.origin}`, 'info');
+    };
+  </script>
+</body>
+</html>

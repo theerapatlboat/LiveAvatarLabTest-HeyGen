@@ -29,7 +29,7 @@ export interface TTSConfig {
   /** Callback when error occurs */
   onError?: (error: string | Error) => void;
   /** Callback when connection state changes */
-  onConnectionChange?: (isConnected: boolean) => void;
+  onConnectionChange?: (isConnectedTTS: boolean) => void;
 }
 
 /**
@@ -90,7 +90,7 @@ export function useWebSocketTTS(config: TTSConfig = {}) {
   } = config;
 
   // ==================== State Management ====================
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnectedTTS, setisConnectedTTS] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [progress, setProgress] = useState<TTSProgress>({
     current: 0,
@@ -207,7 +207,7 @@ export function useWebSocketTTS(config: TTSConfig = {}) {
       switch (message.type) {
         case 'connected':
           console.log('✅ Connected to WebSocket TTS server');
-          setIsConnected(true);
+          setisConnectedTTS(true);
           callbacksRef.current.onConnectionChange?.(true);
           break;
 
@@ -304,7 +304,7 @@ export function useWebSocketTTS(config: TTSConfig = {}) {
 
       ws.onopen = () => {
         console.log('✅ WebSocket connection established');
-        setIsConnected(true);
+        setisConnectedTTS(true);
         callbacksRef.current.onConnectionChange?.(true);
       };
 
@@ -317,7 +317,7 @@ export function useWebSocketTTS(config: TTSConfig = {}) {
 
       ws.onclose = () => {
         console.log('🔌 WebSocket connection closed');
-        setIsConnected(false);
+        setisConnectedTTS(false);
         setIsSynthesizing(false);
         callbacksRef.current.onConnectionChange?.(false);
         wsRef.current = null;
@@ -338,7 +338,7 @@ export function useWebSocketTTS(config: TTSConfig = {}) {
       wsRef.current.close();
       wsRef.current = null;
     }
-    setIsConnected(false);
+    setisConnectedTTS(false);
     setIsSynthesizing(false);
     callbacksRef.current.onConnectionChange?.(false);
   }, []);
@@ -473,7 +473,7 @@ export function useWebSocketTTS(config: TTSConfig = {}) {
 
   return {
     // State
-    isConnected,
+    isConnectedTTS,
     isSynthesizing,
     progress,
 

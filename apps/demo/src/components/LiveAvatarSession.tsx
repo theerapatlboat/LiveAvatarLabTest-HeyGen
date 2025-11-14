@@ -12,6 +12,7 @@ import { SessionState } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { useElevenLabsRealtimeSTT } from "../liveavatar/useElevenLabsRealtimeSTT";
 import { useLiveAvatarContext } from "../liveavatar/context";
+import { useWebSocketTTS } from "../liveavatar/useWebSocketTTS";
 
 const Button: React.FC<{
   onClick?: () => void;
@@ -103,6 +104,34 @@ const LiveAvatarSessionComponent: React.FC<{
     },
   });
 
+  // WebSocket TTS Integration
+  const {
+    isConnectedTTS: isWSTTSConnected,
+    isSynthesizing: isWSTTSSynthesizing,
+    progress: wsTTSProgress,
+    connect: connectWSTTS,
+    disconnect: disconnectWSTTS,
+    synthesize: synthesizeWSTTS,
+  } = useWebSocketTTS({
+    wsUrl: 'ws://localhost:3013/ws/elevenlabs-tts',
+    voiceId: 'moBQ5vcoHD68Es6NqdGR',
+    modelId: 'eleven_v3',
+    autoConnect: false,
+    onAudioChunk: (chunkIndex, totalChunks, text) => {
+      console.log(`🎵 Audio chunk ${chunkIndex + 1}/${totalChunks}:`, text);
+    },
+    onComplete: (totalChunks) => {
+      console.log(`✅ [WS-TTS] Synthesis completed - ${totalChunks} chunks`);
+    },
+    onError: (error) => {
+      console.error('❌ [WS-TTS] Error:', error);
+      alert(`Error: ${error}`);
+    },
+    onConnectionChange: (connected) => {
+      console.log(`🔌 [WS-TTS] Connection: ${connected ? 'Connected ✅' : 'Disconnected ❌'}`);
+    }
+  });
+
   // Voice-to-Voice flow handler
   const handleVoiceToVoice = useCallback(async () => {
     try {
@@ -169,6 +198,30 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   }, [startSession, sessionState]);
 
+  // Auto-Connect/Disconnect WebSocket TTS based on mode
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    if (mode === 'CUSTOM' && !isWSTTSConnected) {
+      console.log('🔌 [WS-TTS] Auto-connecting to WebSocket TTS server...');
+
+      // ✅ Delay connection to ensure component is fully mounted
+      timeoutId = setTimeout(() => {
+        connectWSTTS();
+      }, 500); // 500ms delay prevents race condition
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (mode === 'CUSTOM' && isWSTTSConnected) {
+        console.log('🔌 [WS-TTS] Disconnecting from WebSocket TTS server...');
+        disconnectWSTTS();
+      }
+    };
+  }, [mode, isWSTTSConnected]);
+
   const VoiceChatComponents = (
     <>
       <p>Voice Chat Active: {isActive ? "true" : "false"}</p>
@@ -225,11 +278,10 @@ const LiveAvatarSessionComponent: React.FC<{
           stopCustomRecording();
         }}
         disabled={isCustomProcessing}
-        className={`px-6 py-3 rounded-md font-semibold transition-all ${
-          isCustomRecording
-            ? "bg-red-500 text-white scale-110 shadow-lg"
-            : "bg-blue-500 text-white hover:bg-blue-600 active:scale-95"
-        } ${isCustomProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+        className={`px-6 py-3 rounded-md font-semibold transition-all ${isCustomRecording
+          ? "bg-red-500 text-white scale-110 shadow-lg"
+          : "bg-blue-500 text-white hover:bg-blue-600 active:scale-95"
+          } ${isCustomProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         {isCustomRecording ? "🎤 Recording..." : "Hold to Talk"}
       </Button>
@@ -263,11 +315,10 @@ const LiveAvatarSessionComponent: React.FC<{
                 connectRealtimeSTT();
               }
             }}
-            className={`px-6 py-3 rounded-md font-semibold transition-all ${
-              isRealtimeSTTConnected
-                ? "bg-red-500 text-white hover:bg-red-600"
-                : "bg-green-500 text-white hover:bg-green-600"
-            }`}
+            className={`px-6 py-3 rounded-md font-semibold transition-all ${isRealtimeSTTConnected
+              ? "bg-red-500 text-white hover:bg-red-600"
+              : "bg-green-500 text-white hover:bg-green-600"
+              }`}
           >
             {isRealtimeSTTConnected ? "Stop & Process with Avatar" : "Start Realtime Voice Chat"}
           </Button>

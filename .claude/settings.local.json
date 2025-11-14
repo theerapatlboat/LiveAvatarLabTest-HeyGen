@@ -25,7 +25,15 @@
       "Bash(then echo \"File .env exists\")",
       "Bash(else echo \"File .env not found\")",
       "Bash(tree:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(pnpm ws-tts:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(ping:*)",
+      "Bash(node test-ws-client.mjs:*)",
+      "Bash(node test-tts-e2e.mjs:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []
