@@ -1690,6 +1690,145 @@ pnpm typecheck
 
 ---
 
+### Step 4.3 Summary: UI Status Display Implementation (2025-11-14 17:00)
+
+**Status:** ✅ **COMPLETE** - WebSocket TTS status UI added with real-time progress display
+
+**Implementation Details:**
+
+**Changes Made:**
+
+1. **Added WebSocket TTS Status Section** (Lines 328-354)
+   - Real-time connection status display (✅ Connected / ❌ Disconnected)
+   - Green color for connected, red for disconnected
+   - Synthesis progress counter (current/total chunks)
+   - Current text being synthesized (truncated to 50 characters)
+   - Blue background for synthesis indicator
+
+2. **Updated Button State Management** (Lines 379-391)
+   - Added `disabled={isWSTTSSynthesizing}` attribute
+   - Dynamic button text: "🔊 Speaking..." during synthesis
+   - Visual feedback: opacity-50 and cursor-not-allowed during synthesis
+   - Prevents user interaction while TTS is processing
+
+3. **Enhanced User Experience**
+   - Changed "Connected:" to "STT Connected:" for clarity
+   - Added spacing (mt-2, mt-3) for better visual hierarchy
+   - Reset button also disabled during synthesis
+   - Professional color scheme matching existing UI
+
+**UI Components Added:**
+
+```typescript
+{/* WebSocket TTS Status Section */}
+<div className="mt-3 p-3 bg-gray-800 rounded border border-gray-700">
+  <div className="flex items-center justify-between mb-2">
+    <span className="text-sm font-semibold text-gray-300">
+      WebSocket TTS:
+    </span>
+    <span className={`text-sm font-bold ${isWSTTSConnected ? 'text-green-400' : 'text-red-400'}`}>
+      {isWSTTSConnected ? '✅ Connected' : '❌ Disconnected'}
+    </span>
+  </div>
+
+  {isWSTTSSynthesizing && (
+    <div className="mt-2 p-2 bg-blue-900 bg-opacity-30 rounded border border-blue-600">
+      <div className="flex items-center gap-2">
+        <span className="text-blue-400 text-sm">🔊 Synthesizing...</span>
+        <span className="text-blue-300 text-sm font-mono">
+          {wsTTSProgress.current}/{wsTTSProgress.total} chunks
+        </span>
+      </div>
+      {wsTTSProgress.currentText && (
+        <p className="text-xs text-gray-400 mt-1 truncate">
+          "{wsTTSProgress.currentText.substring(0, 50)}..."
+        </p>
+      )}
+    </div>
+  )}
+</div>
+```
+
+**TypeScript Validation:**
+```bash
+pnpm typecheck
+✅ PASSED (0 errors)
+```
+
+**Visual Layout:**
+
+**Before:**
+```
+┌─────────────────────────────────────┐
+│ ElevenLabs Realtime STT             │
+│ Connected: false                    │
+│ [Start Realtime Voice Chat]         │
+└─────────────────────────────────────┘
+```
+
+**After:**
+```
+┌─────────────────────────────────────┐
+│ ElevenLabs Realtime STT             │
+│ STT Connected: false                │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ WebSocket TTS:    ✅ Connected  │ │
+│ │                                 │ │
+│ │ ┌──────────────────────────────┐│ │
+│ │ │ 🔊 Synthesizing...   3/5     ││ │
+│ │ │ "สวัสดีครับ ยินดีต้อนรับ..."  ││ │
+│ │ └──────────────────────────────┘│ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ [🔊 Speaking...] (disabled)         │
+│ [Reset Transcript] (disabled)       │
+└─────────────────────────────────────┘
+```
+
+**Benefits:**
+
+✅ **Real-time Status Visibility:**
+- Users can see WebSocket connection state at a glance
+- Immediate visual feedback when synthesis starts/stops
+- Progress tracking shows how many chunks are being processed
+
+✅ **Improved User Experience:**
+- Button disabling prevents double-clicks during synthesis
+- Clear visual indicators (colors, icons) for different states
+- Professional UI matching existing design system
+
+✅ **Debugging Support:**
+- Status display helps identify connection issues
+- Progress counter useful for testing different text lengths
+- Current text preview confirms correct content being synthesized
+
+**Files Modified:**
+- `apps/demo/src/components/LiveAvatarSession.tsx` (Lines 320-403)
+  - Added WebSocket TTS status UI section
+  - Updated button disabled states
+  - Enhanced visual feedback
+
+**State Variables Used:**
+- `isWSTTSConnected` - WebSocket connection status
+- `isWSTTSSynthesizing` - Synthesis in progress flag
+- `wsTTSProgress.current` - Current chunk number
+- `wsTTSProgress.total` - Total chunks
+- `wsTTSProgress.currentText` - Text being synthesized
+
+**Code Quality:**
+- ✅ TypeScript compilation passed (0 errors)
+- ✅ Responsive design with Tailwind CSS
+- ✅ Consistent color scheme (green/red/blue)
+- ✅ Proper spacing and visual hierarchy
+- ✅ Accessibility-friendly (clear labels, color contrast)
+
+**Progress:** Step 4.3 Complete (95% of total integration)
+
+**Next:** [Step 4.4: Final Integration Testing](#step-44-final-integration-testing) (Optional) →
+
+---
+
 ### Step 4.2 (ARCHIVED - Original Instructions)
 
 **Time:** 20-30 minutes

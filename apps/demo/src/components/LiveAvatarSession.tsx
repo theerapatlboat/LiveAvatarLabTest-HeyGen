@@ -323,14 +323,46 @@ const LiveAvatarSessionComponent: React.FC<{
         <h3 className="text-lg font-bold text-yellow-400 mb-2">
           ElevenLabs Realtime STT (Continuous Voice Chat)
         </h3>
-        <p>Connected: {isRealtimeSTTConnected ? "true" : "false"}</p>
+        <p>STT Connected: {isRealtimeSTTConnected ? "true" : "false"}</p>
+
+        {/* 🆕 WebSocket TTS Status Section */}
+        <div className="mt-3 p-3 bg-gray-800 rounded border border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-gray-300">
+              WebSocket TTS:
+            </span>
+            <span className={`text-sm font-bold ${isWSTTSConnected ? 'text-green-400' : 'text-red-400'}`}>
+              {isWSTTSConnected ? '✅ Connected' : '❌ Disconnected'}
+            </span>
+          </div>
+
+          {isWSTTSSynthesizing && (
+            <div className="mt-2 p-2 bg-blue-900 bg-opacity-30 rounded border border-blue-600">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400 text-sm">🔊 Synthesizing...</span>
+                <span className="text-blue-300 text-sm font-mono">
+                  {wsTTSProgress.current}/{wsTTSProgress.total} chunks
+                </span>
+              </div>
+              {wsTTSProgress.currentText && (
+                <p className="text-xs text-gray-400 mt-1 truncate">
+                  "{wsTTSProgress.currentText.substring(0, 50)}..."
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        {/* End WebSocket TTS Status */}
+
         {realtimePartialText && (
-          <p className="text-gray-400 italic">Partial: {realtimePartialText}</p>
+          <p className="text-gray-400 italic mt-2">Partial: {realtimePartialText}</p>
         )}
         {realtimeFinalText && (
-          <p className="text-white font-semibold">Transcript: {realtimeFinalText}</p>
+          <p className="text-white font-semibold mt-2">Transcript: {realtimeFinalText}</p>
         )}
-        <div className="flex gap-2 mt-2">
+
+        {/* Buttons */}
+        <div className="flex gap-2 mt-3">
           <Button
             onClick={async () => {
               if (isRealtimeSTTConnected) {
@@ -344,18 +376,24 @@ const LiveAvatarSessionComponent: React.FC<{
                 connectRealtimeSTT();
               }
             }}
-            className={`px-6 py-3 rounded-md font-semibold transition-all ${isRealtimeSTTConnected
-              ? "bg-red-500 text-white hover:bg-red-600"
-              : "bg-green-500 text-white hover:bg-green-600"
-              }`}
+            disabled={isWSTTSSynthesizing} // 🆕 Disable during synthesis
+            className={`px-6 py-3 rounded-md font-semibold transition-all ${
+              isRealtimeSTTConnected
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-green-500 text-white hover:bg-green-600"
+            } ${isWSTTSSynthesizing ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            {isRealtimeSTTConnected ? "Stop & Process with Avatar" : "Start Realtime Voice Chat"}
+            {isWSTTSSynthesizing
+              ? "🔊 Speaking..."
+              : isRealtimeSTTConnected
+              ? "Stop & Process with Avatar"
+              : "Start Realtime Voice Chat"}
           </Button>
           <Button
             onClick={() => {
               resetRealtimeSTT();
             }}
-            disabled={!isRealtimeSTTConnected}
+            disabled={!isRealtimeSTTConnected || isWSTTSSynthesizing}
           >
             Reset Transcript
           </Button>
