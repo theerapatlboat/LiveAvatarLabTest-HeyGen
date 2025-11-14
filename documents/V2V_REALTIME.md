@@ -5,17 +5,16 @@
 
 ## 📊 IMPLEMENTATION STATUS SUMMARY
 
-### ระดับความพร้อม: **84% พร้อมใช้งาน** ⚠️
+### ระดับความพร้อม: **84% พร้อมใช้งาน Production** ✅⚠️
 
 | Phase | Status | Progress | Ready for Production |
 |-------|--------|----------|---------------------|
 | **Phase 1**: Session Management | ✅ สำเร็จ | 100% | ✅ YES |
 | **Phase 2**: Voice Chat (FULL) | ✅ สำเร็จ | 100% | ✅ YES |
 | **Phase 3**: Custom Voice Chat | ✅ สำเร็จ | 100% | ✅ YES |
-| **Phase 4**: Realtime STT (Logs-only) | ✅ สำเร็จ | 100% | ✅ YES (testing mode) |
 | **Phase 4**: Realtime STT (Full V2V) | ✅ สำเร็จ | 100% | ✅ YES |
-| **Phase 5**: WebSocket TTS | 🚧 กำลังดำเนินการ | 50% | ❌ NO (Task 1-3/6 เสร็จแล้ว) |
-| **Phase 6**: WebSocket Chat | ⚠️ ยังไม่ได้เริ่ม | 0% | ❌ NO |
+| **Phase 5**: WebSocket TTS | 🚧 กำลังดำเนินการ | 60% | ❌ NO (Tasks 1-3/5 เสร็จ, Tasks 4-5 ยังไม่เสร็จ) |
+| **Phase 6**: WebSocket Chat | ❌ ยังไม่ได้เริ่ม | 0% | ❌ NO |
 
 ### สิ่งที่พร้อมใช้งาน (Production Ready)
 
@@ -28,13 +27,6 @@
 - Latency: ~3-5 วินาที
 - ปรับแต่ง AI และเสียงได้เต็มที่
 
-✅ **โหมด CUSTOM + ElevenLabs Realtime STT (Logs-only)** - Real-time STT Testing
-- Pipeline: User Speech → ElevenLabs Realtime STT → Console Logs
-- Latency: <500ms (real-time streaming)
-- ไม่ต้องกด Hold to Talk แบบต่อเนื่อง
-- รองรับภาษาไทยด้วย Scribe v2
-- **ไม่ต้องมี OpenAI/ElevenLabs TTS API keys**
-
 ✅ **โหมด CUSTOM + ElevenLabs Realtime STT (Full V2V)** - Voice-to-Voice แบบ Continuous Streaming
 - Pipeline: User Speech → ElevenLabs Realtime STT → OpenAI Chat → ElevenLabs REST TTS → Avatar
 - Latency: ~3-5 วินาที (เร็วกว่า Whisper แต่ยังใช้ REST API สำหรับ TTS)
@@ -43,45 +35,23 @@
 
 ### สิ่งที่ยังต้องพัฒนา (Need Implementation)
 
-✅ **Phase 4**: ElevenLabs Realtime STT (100% เสร็จ)
-- ✅ API endpoint สำหรับ token generation
-- ✅ React Hook ด้วย @elevenlabs/client SDK + microphone config
-- ✅ Integration กับ UI และ console logging
-- ✅ UI controls สำหรับ Start/Stop continuous voice chat
-- ✅ แสดง partial และ final transcripts ใน console
-- ✅ Full V2V flow (OpenAI + WebSocket TTS + Avatar)
-
-🚧 **Phase 5**: WebSocket TTS (50% - กำลังดำเนินการ) - **อัพเดต 2025-11-13**
+🚧 **Phase 5**: WebSocket TTS (60% - กำลังดำเนินการ) - **อัพเดต 2025-11-14**
 - ✅ **Task 1: Setup Project Structure เสร็จแล้ว** (โฟลเดอร์, dependencies, npm script)
-- ✅ **Task 2: Implement WebSocket Server เสร็จแล้ว** (ไฟล์ `server/websocket-tts-server.ts` พร้อมใช้งาน - 340 บรรทัด)
-  - ✅ Basic server structure with WebSocket on port 3013
-  - ✅ **Text chunking logic (lines 85-184) - อัพเดต 2025-11-13** - แบ่งข้อความตาม delimiters:
-    - **Primary delimiters:** `.` `!` `?` (strong sentence breaks) ✅ **ตามที่ User ร้องขอ**
-    - **Secondary delimiters:** `,` `;` `:` (weaker breaks) ✅ **ตามที่ User ร้องขอ - อัพเดตเพิ่มเติมแล้ว**
-    - **Max chunk size:** 200 characters
-    - **Chunking strategy:**
-      - Primary delimiters: Flush เมื่อ chunk > 50% ของ maxChunkSize (100 chars)
-      - Secondary delimiters: Flush เมื่อ chunk > 70% ของ maxChunkSize (140 chars)
-      - Smart delimiter detection: ตรวจจับและ flush ตามความเหมาะสม
-    - **Fallback:** Word-based splitting ถ้าไม่มี delimiters
-    - **ส่งไปยัง ElevenLabs:** ✅ แต่ละ chunk ถูกส่งไปแปลง TTS แยกกัน แล้ว stream audio กลับมาแบบ sequential
-    - **📍 Verification:** ✅ **อัพเดตเสร็จสมบูรณ์ 2025-11-13** - ตรวจสอบแล้วว่า text chunking ทำงานครบทุก delimiters (`.` `!` `?` `,` `;` `:`) พร้อมใช้งาน
-  - ✅ ElevenLabs TTS API integration (REST API)
+- ✅ **Task 2: Implement WebSocket Server เสร็จแล้ว** (ไฟล์ `server/websocket-tts-server.ts` - 333 บรรทัด)
+  - ✅ **Text chunking แบ่งเฉพาะตาม delimiters:** `,` `!` `?` `:` `;` `.`
+    - **ไม่มี maxChunkSize** - แบ่ง chunk เฉพาะเมื่อเจอ delimiter เท่านั้น
+    - **ไม่จำกัดความยาว** - chunk อาจยาวหรือสั้นตามตำแหน่ง delimiter
+    - แต่ละ delimiter สร้าง chunk ใหม่ทันที
+  - ✅ ElevenLabs REST API integration
   - ✅ WebSocket message handling (tts, stop, ping)
-  - ✅ Comprehensive logging with emojis (🔪, ✂️, 🎯, 📝, ✅, 📤)
+  - ✅ Comprehensive logging with emojis
   - ✅ Error handling and graceful shutdown
-- ✅ **Task 3: React Hook เสร็จแล้ว** (ไฟล์ `src/liveavatar/useWebSocketTTS.ts` พร้อมใช้งาน)
-  - ✅ TypeScript interfaces (TTSConfig, TTSProgress, WebSocketMessage)
-  - ✅ WebSocket connection management (connect, disconnect, reconnection)
-  - ✅ Web Audio API integration (AudioContext, audio queue)
-  - ✅ Sequential audio playback (playNextChunk with automatic queue processing)
-  - ✅ TTS message handling (synthesize, audio_chunk, completed, error)
-  - ✅ Cleanup & stop functions (stop playback, clear queue, disconnect)
-  - ✅ Comprehensive state management (isConnected, isSynthesizing, progress)
-- 🔄 **Task 4: Test Page** - มี React test page แล้ว (`app/test-ws-tts/page.tsx`) แต่ยังไม่มี HTML standalone
-- ❌ Task 5: Integration กับ Phase 4
-- ❌ Task 6: Testing & Documentation
-- ✅ มี design documentation ([WS_TTS_EL.md](./WS_TTS_EL.md)) จากโปรเจกต์อื่น (Go backend) ใช้เป็น reference ได้
+- ✅ **Task 3: React Hook เสร็จแล้ว** (ไฟล์ `src/liveavatar/useWebSocketTTS.ts` - 492 บรรทัด)
+  - ✅ WebSocket connection management
+  - ✅ Web Audio API integration (AudioContext, sequential audio queue)
+  - ✅ State management (isConnected, isSynthesizing, progress)
+- ❌ **Task 4: Integration กับ LiveAvatarSession** (เดิม Task 5)
+- ❌ **Task 5: Testing & Documentation** (เดิม Task 6)
 
 ⚠️ **Phase 6**: WebSocket Chat (ยังไม่ได้เริ่ม)
 - WebSocket Chat Server สำหรับ OpenAI
@@ -199,460 +169,223 @@ pnpm build
 
 # IMPLEMENTATION FLOW
 
-## PHASE 1: Session Management ✅ สำเร็จแล้ว
+## PHASE 1: Session Management ✅
 
-**Status:** ✅ สำเร็จแล้ว
+### หน้าที่
+จัดการ Session lifecycle ของ HeyGen LiveAvatar (สร้าง, ต่ออายุ, ปิด session)
 
-### หน้าที่ (Function)
-จัดการ Session lifecycle ของ HeyGen LiveAvatar รวมถึงการสร้าง, ต่ออายุ, และปิด session
+### หลักการทำงาน
+- **FULL mode**: HeyGen จัดการ STT, AI, TTS อัตโนมัติ
+- **CUSTOM mode**: ผู้ใช้ควบคุม AI และ TTS เอง, HeyGen ทำ video streaming และ lip-sync
+- **Keep Alive**: ต่ออายุ session ทุก 5 นาที
 
-### หลักการทำงาน (Working Principles)
-- Start Session: สร้าง session token จาก HeyGen API (FULL mode มี avatar_persona, CUSTOM mode ควบคุมเอง)
-- Keep Alive: ต่ออายุ session ทุก 5 นาที เพื่อป้องกัน timeout
-- WebSocket Connection: เชื่อมต่อ WebSocket สำหรับ CUSTOM mode เพื่อส่งคำสั่งควบคุม Avatar
+### Implementation
+- APIs: [start-session](../apps/demo/app/api/start-session/route.ts), [start-custom-session](../apps/demo/app/api/start-custom-session/route.ts), [keep-session-alive](../apps/demo/app/api/keep-session-alive/route.ts), [stop-session](../apps/demo/app/api/stop-session/route.ts)
+- Hook: [useSession.ts](../apps/demo/src/liveavatar/useSession.ts)
 
-### วิธีการทำงาน (Implementation)
-- API Endpoints: `start-session`, `start-custom-session`, `keep-session-alive`, `stop-session`
-- React Hook: `useSession.ts` ที่จัดการ state และ lifecycle
-
-### ผลลัพธ์การทำงาน (Results)
-✅ ใช้งานได้เต็มรูปแบบทั้ง FULL และ CUSTOM mode พร้อมใช้งาน production
-
----
-
-## PHASE 2: Voice Chat (FULL Mode) ✅ สำเร็จแล้ว
-
-**Status:** ✅ สำเร็จแล้ว
-
-### หน้าที่ (Function)
-Voice Chat แบบ end-to-end ที่ HeyGen จัดการทุกอย่าง (STT, AI, TTS, Lip-sync) โดยอัตโนมัติ
-
-### หลักการทำงาน (Working Principles)
-HeyGen ทำหน้าที่เป็น all-in-one solution จัดการ Voice Chat ทั้งหมด ตั้งแต่รับเสียง แปลงเป็นข้อความ generate คำตอบด้วย AI แปลงกลับเป็นเสียง และทำ lip-sync
-
-### วิธีการทำงาน (Implementation)
-- React Hook: `useVoiceChat.ts` จัดการ microphone access และ voice chat lifecycle
-- Flow: User Speaks → HeyGen STT → HeyGen AI → HeyGen TTS → Avatar Speaks
-
-### ผลลัพธ์การทำงาน (Results)
-✅ ใช้งานได้เต็มรูปแบบ, Latency: 1-2 วินาที, เหมาะสำหรับการใช้งานที่ต้องการความง่ายและรวดเร็ว
-
----
-
-## PHASE 3: Custom Voice Chat (CUSTOM Mode) ✅ สำเร็จแล้ว
-
-**Status:** ✅ สำเร็จแล้ว
-
-### หน้าที่ (Function)
-Voice Chat แบบปรับแต่งได้เต็มรูปแบบ ผู้ใช้สามารถเลือก AI model และ voice ที่ต้องการ
-
-### หลักการทำงาน (Working Principles)
-ใช้ REST API เชื่อมต่อระหว่าง OpenAI (Whisper STT + GPT Chat) และ ElevenLabs (TTS) โดย HeyGen ทำหน้าที่เฉพาะ video streaming และ lip-sync
-
-### วิธีการทำงาน (Implementation)
-- Audio Recording: Web Audio API (AudioWorklet)
-- Pipeline: AudioWorklet → Whisper STT → OpenAI Chat → ElevenLabs TTS → Avatar (WebSocket chunks 20ms)
-- APIs: `openai-whisper-stt`, `openai-chat-complete`, `elevenlabs-text-to-speech`
-- Hooks: `useCustomVoiceChat.ts`, `useTextChat.ts`
-
-### ผลลัพธ์การทำงาน (Results)
-✅ ใช้งานได้เต็มรูปแบบ, Latency: 3-5 วินาที, ปรับแต่ง AI และเสียงได้เต็มที่, เหมาะสำหรับการใช้งานที่ต้องการความยืดหยุ่น
-
----
-
-## PHASE 4: ElevenLabs Realtime Speech-to-Text Integration ✅ สำเร็จแล้ว
-
-**Status:** ✅ สำเร็จแล้ว (พร้อม Full Voice-to-Voice flow)
-
-### หน้าที่ (Function)
-Real-time Speech-to-Text streaming พร้อม Voice-to-Voice integration โดยใช้ ElevenLabs Scribe v2 Realtime แทน OpenAI Whisper
-
-### หลักการทำงาน (Working Principles)
-- ใช้ `@elevenlabs/client` SDK เชื่อมต่อ microphone แบบ streaming
-- Scribe v2 Realtime ส่ง partial transcripts แบบ real-time และ committed transcripts เมื่อตรวจจับ silence
-- Combined transcript จากทั้ง session ถูกส่งไปยัง OpenAI Chat → ElevenLabs TTS → Avatar เมื่อกด "Stop & Process with Avatar"
-
-### วิธีการทำงาน (Implementation)
-- API: `/api/elevenlabs-stt-token` (single-use token, หมดอายุ 15 นาที)
-- Hook: `useElevenLabsRealtimeSTT.ts` ด้วย `getCombinedTranscript()` function
-- Component: `LiveAvatarSession.tsx` พร้อม `handleVoiceToVoice()` callback
-- Pipeline: User Speech → ElevenLabs Scribe (streaming) → Combined Transcript → OpenAI Chat → ElevenLabs TTS → Avatar
-- Features: Auto transcript reset เมื่อเริ่ม session ใหม่, Combined transcript accumulation
-
-### ผลลัพธ์การทำงาน (Results)
-✅ ใช้งานได้เต็มรูปแบบ, STT Latency: <500ms, รองรับภาษาไทย, Continuous voice chat (ไม่ต้องกด Hold to Talk), Full V2V flow enabled, Total Latency: ~2-3 วินาที (เร็วกว่า Whisper)
-
----
-
-## PHASE 5: WebSocket Integration for ElevenLabs TTS ⚠️ ยังไม่ได้เริ่ม
-
-**Status:** ⚠️ **ยังไม่ได้ Implement** - มีเฉพาะ Design Documentation
-**Estimated Effort:** ~8-10 ชั่วโมง
-
-### 📋 สถานะการ Implement ปัจจุบัน
-
-**สิ่งที่มี:**
-- ✅ Design Documentation ครบถ้วนใน [WS_TTS_EL.md](./WS_TTS_EL.md) (จากโปรเจกต์ Go backend)
-- ✅ มี `@elevenlabs/client` SDK ติดตั้งแล้วใน [package.json](../apps/demo/package.json:14)
-- ✅ Architecture ที่ชัดเจนสำหรับ WebSocket Middleware Pattern
-
-**สิ่งที่ยังไม่มี:**
-- ❌ WebSocket Server (`server/websocket-tts-server.ts`) - ยังไม่ได้สร้าง
-- ❌ React Hook (`useWebSocketTTS.ts`) - ยังไม่ได้สร้าง
-- ❌ HTML Test Page (`test-elevenlabs-ws-tts.html`) - ยังไม่ได้สร้าง
-- ❌ npm script สำหรับรัน WebSocket server - ยังไม่ได้เพิ่ม
-- ❌ Integration กับ LiveAvatarSession component - ยังไม่ได้ทำ
-
-### ⚠️ IMPORTANT: eleven_v3 Architecture Solution (Design)
-
-**ปัญหา:** ElevenLabs `eleven_v3` model **ไม่รองรับ native WebSocket streaming**
-
-**โซลูชันที่วางแผนไว้:** สร้าง **WebSocket Middleware Pattern**:
-- Client ↔ WebSocket ↔ Custom Server ↔ REST API ↔ ElevenLabs
-- Server แบ่ง text เป็น chunks และเรียก REST API แต่ละ chunk
-- Server stream audio chunks กลับไปยัง client ผ่าน WebSocket
-- Client เล่น audio แบบ sequential streaming
-
-**ประโยชน์ที่คาดหวัง:**
-- ✅ ใช้ eleven_v3 (คุณภาพสูงสุด) ได้แม้จะไม่มี native WebSocket support
-- ✅ Progressive audio playback (เล่นได้ทันทีที่ได้ chunk แรก)
-- ✅ ลด perceived latency จาก ~3-5 วินาที เป็น ~1.5-2.5 วินาที
-- ✅ รองรับข้อความยาวผ่าน text chunking
-
-### หลักการทำงาน (Working Principles)
-
-#### 1. Text Chunking Strategy ✅ **ใช้งานได้แล้ว - อัพเดต 2025-11-13**
-
-**Implementation Status:** ✅ **Implemented และ Updated** in [apps/demo/server/websocket-tts-server.ts:85-184](../apps/demo/server/websocket-tts-server.ts)
-
-แบ่งข้อความตาม delimiters เพื่อสร้าง natural speech breaks:
-- **Primary Delimiters (Strong breaks):** Period (`.`), Exclamation (`!`), Question (`?`)
-- **Secondary Delimiters (Weaker breaks):** Comma (`,`), Semicolon (`;`), Colon (`:`) ✅ **อัพเดตเพิ่มเติม 2025-11-13**
-- **Max Chunk Size:** 200 characters
-- **Fallback Strategy:** Word-based splitting ถ้าไม่มี delimiters
-
-**วิธีการทำงาน (อัพเดต 2025-11-13):**
-```typescript
-function chunkText(text: string, maxChunkSize: number = 200): string[] {
-  // Combined regex for all delimiters
-  // Primary (strongest breaks): Period (.), Exclamation (!), Question (?)
-  // Secondary (weaker breaks): Comma (,), Semicolon (;), Colon (:)
-  const allDelimiters = /([.!?,;:])/g;
-
-  // Split by all delimiters (primary + secondary)
-  const parts = text.split(allDelimiters);
-
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
-
-    // Determine if we should flush based on delimiter type
-    const isPrimaryDelimiter = /[.!?]/.test(part);
-    const isSecondaryDelimiter = /[,;:]/.test(part);
-
-    if (currentChunk.trim().length > 0) {
-      // Primary delimiters: Flush if chunk > 50% of maxChunkSize
-      if (isPrimaryDelimiter && currentChunk.length > maxChunkSize * 0.5) {
-        chunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
-      // Secondary delimiters: Flush if chunk > 70% of maxChunkSize
-      else if (isSecondaryDelimiter && currentChunk.length > maxChunkSize * 0.7) {
-        chunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
-    }
-  }
-
-  // Fallback: Word-based splitting if no delimiter-based chunks created
-}
+### วิธีทดสอบ
+```bash
+pnpm dev
+# เปิด http://localhost:3012
+# เลือก FULL หรือ CUSTOM mode → session เริ่มทำงานอัตโนมัติ
 ```
 
-**ผลลัพธ์:**
-- ✅ Audio เล่นเร็วขึ้น (ไม่ต้องรอประมวลผลทั้งหมด)
-- ✅ Natural pauses ในการพูด
-- ✅ รองรับข้อความยาวๆ
-- ✅ แต่ละ chunk ถูกส่งไปยัง ElevenLabs REST API แยกกัน
-- ✅ Audio chunks stream กลับมาทาง WebSocket แบบ sequential
-- ✅ **อัพเดต 2025-11-13:** รองรับทั้ง primary และ secondary delimiters ครบถ้วน (`.` `!` `?` `,` `;` `:`)
+---
 
-#### 2. Sequential Audio Playback
-ใช้ queue-based playback:
+## PHASE 2: Voice Chat (FULL Mode) ✅
+
+### หน้าที่
+Voice Chat แบบ end-to-end ที่ HeyGen จัดการทุกอย่างอัตโนมัติ (STT → AI → TTS → Lip-sync)
+
+### หลักการทำงาน
+HeyGen ทำหน้าที่ all-in-one solution ประมวลผล voice chat ทั้งหมดโดยไม่ต้องใช้ external APIs
+
+### Implementation
+- Hook: [useVoiceChat.ts](../apps/demo/src/liveavatar/useVoiceChat.ts)
+- Flow: User Speech → HeyGen Built-in STT → HeyGen AI → HeyGen TTS → Avatar
+
+### วิธีทดสอบ
+```bash
+pnpm dev
+# เลือก FULL mode → กด "Start Voice Chat" → พูด → Avatar ตอบกลับ
+# Latency: ~1-2 วินาที
+```
+
+---
+
+## PHASE 3: Custom Voice Chat ✅
+
+### หน้าที่
+Voice Chat แบบปรับแต่งได้ด้วย OpenAI (Whisper + GPT-4) และ ElevenLabs TTS
+
+### หลักการทำงาน
+ใช้ REST APIs เชื่อมต่อ external services พร้อมควบคุม AI model และ voice ได้เต็มรูปแบบ
+
+### Implementation
+- Hook: [useCustomVoiceChat.ts](../apps/demo/src/liveavatar/useCustomVoiceChat.ts)
+- APIs: [openai-whisper-stt](../apps/demo/app/api/openai-whisper-stt/route.ts), [openai-chat-complete](../apps/demo/app/api/openai-chat-complete/route.ts), [elevenlabs-text-to-speech](../apps/demo/app/api/elevenlabs-text-to-speech/route.ts)
+- Flow: User Speech → Whisper STT → OpenAI Chat → ElevenLabs TTS → Avatar
+
+### วิธีทดสอบ
+```bash
+# ตั้งค่า .env.local:
+# OPENAI_API_KEY=sk-xxx
+# ELEVENLABS_API_KEY=sk_xxx
+
+pnpm dev
+# เลือก CUSTOM mode → Hold to Talk → พูด → ปล่อย → Avatar ตอบ
+# Latency: ~3-5 วินาที
+```
+
+---
+
+## PHASE 4: ElevenLabs Realtime STT ✅
+
+### หน้าที่
+Real-time Speech-to-Text streaming พร้อม Voice-to-Voice flow โดยใช้ ElevenLabs Scribe v2
+
+### หลักการทำงาน
+- Continuous streaming (ไม่ต้องกด Hold to Talk)
+- Partial transcripts (real-time feedback) + Final transcripts (VAD-based)
+- Combined transcript สำหรับส่งไปยัง OpenAI Chat
+
+### Implementation
+- API: [elevenlabs-stt-token](../apps/demo/app/api/elevenlabs-stt-token/route.ts)
+- Hook: [useElevenLabsRealtimeSTT.ts](../apps/demo/src/liveavatar/useElevenLabsRealtimeSTT.ts)
+- Component: [LiveAvatarSession.tsx](../apps/demo/src/components/LiveAvatarSession.tsx) (lines 239-285)
+- Flow: User Speech → ElevenLabs Scribe (WebSocket) → Combined Transcript → OpenAI Chat → ElevenLabs REST TTS → Avatar
+
+### วิธีทดสอบ
+```bash
+# ตั้งค่า .env.local:
+# ELEVENLABS_API_KEY=sk_xxx
+# OPENAI_API_KEY=sk-xxx
+
+pnpm dev
+# เลือก CUSTOM mode → Start Realtime Voice Chat → พูดต่อเนื่อง → Stop & Process with Avatar
+# STT Latency: <500ms, Total V2V Latency: ~3-5 วินาที
+```
+
+---
+
+## PHASE 5: WebSocket TTS Integration 🚧
+
+**Status:** 🚧 **60% เสร็จ** (Tasks 1-3/5 สำเร็จ)
+**Estimated Remaining Effort:** ~2-3 ชั่วโมง (Tasks 4-5)
+
+### 📋 สถานะการ Implement
+
+**สิ่งที่เสร็จแล้ว ✅:**
+- ✅ **Task 1**: Project structure, dependencies (ws@8.18.3, @types/ws@8.18.1, tsx@4.20.6), npm script
+- ✅ **Task 2**: WebSocket Server [websocket-tts-server.ts](../apps/demo/server/websocket-tts-server.ts) - 333 lines
+  - **Text chunking แบ่งเฉพาะตาม delimiters:** `,` `!` `?` `:` `;` `.` (ไม่มีขนาด limit)
+  - ElevenLabs REST API integration
+  - Message handling (tts, stop, ping)
+  - Comprehensive logging
+- ✅ **Task 3**: React Hook [useWebSocketTTS.ts](../apps/demo/src/liveavatar/useWebSocketTTS.ts) - 492 lines
+  - WebSocket connection management
+  - Audio queue & sequential playback
+  - Progress tracking
+
+**สิ่งที่ยังต้องทำ ❌:**
+- ❌ **Task 4**: Integration กับ LiveAvatarSession (~1.5-2 hours)
+- ❌ **Task 5**: Testing & Documentation (~1-1.5 hours)
+
+### หลักการทำงาน
+
+**WebSocket Middleware Pattern:**
+```
+Client ↔ WebSocket ↔ Custom Server ↔ ElevenLabs REST API
+```
+
+**เหตุผล:** eleven_v3 ไม่รองรับ native WebSocket streaming
+
+**Solution:**
+- Server แบ่ง text เป็น chunks **เฉพาะตาม delimiters:** `,` `!` `?` `:` `;` `.` (ไม่มีขนาด limit)
+- เรียก ElevenLabs REST API แต่ละ chunk แยกกัน
+- Stream audio chunks กลับ client ผ่าน WebSocket
+- Client เล่น audio แบบ sequential queue
+
+**ประโยชน์:**
+- ใช้ eleven_v3 ได้ (คุณภาพสูงสุด)
+- Progressive playback (เล่นได้ทันทีที่ได้ chunk แรก)
+- ลด latency จาก ~3-5s → ~1.5-2.5s (40-50% เร็วขึ้น)
+- รองรับข้อความยาว
+
+### Implementation Details
+
+**Text Chunking (Task 2 - เสร็จแล้ว):**
+- **แบ่ง chunk เฉพาะตาม delimiters:** `,` `!` `?` `:` `;` `.`
+- **ไม่มี maxChunkSize** - แบ่งเมื่อเจอ delimiter เท่านั้น
+- **ไม่จำกัดความยาว chunk** - ขึ้นกับตำแหน่ง delimiter ในข้อความ
+- แต่ละ delimiter สร้าง chunk ใหม่ทันที (natural speech breaks)
+- ดู [websocket-tts-server.ts:85-145](../apps/demo/server/websocket-tts-server.ts)
+
+**Sequential Audio Playback (Task 3 - เสร็จแล้ว):**
 1. รับ audio chunk จาก WebSocket
 2. ใส่เข้า queue
 3. Decode เป็น AudioBuffer
-4. เล่น chunk ปัจจุบัน
-5. เมื่อเสร็จ → เล่น chunk ถัดไป
+4. เล่นแบบ sequential (auto-play next chunk)
+- ดู [useWebSocketTTS.ts](../apps/demo/src/liveavatar/useWebSocketTTS.ts)
 
-ทำให้:
-- ✅ Audio ต่อเนื่องไม่สะดุด
-- ✅ ไม่มี gaps ระหว่าง chunks
-- ✅ Smooth playback experience
+### วิธีการรัน WebSocket Server
 
-### วิธีการทำงานที่วางแผนไว้ (Planned Implementation)
-
-#### 1. Custom WebSocket Server (ยังไม่ได้สร้าง)
-
-**ไฟล์ที่ต้องสร้าง:** `apps/demo/server/websocket-tts-server.ts`
-
-**Features:**
-- Port: 3013
-- WebSocket Path: `/ws/elevenlabs-tts`
-- Text chunking with configurable delimiters
-- Detailed logging ทุก operation
-- Error handling และ graceful shutdown
-
-**วิธีรัน:**
 ```bash
+# Terminal 1: Start WebSocket TTS server
+cd apps/demo
 pnpm ws-tts
+
+# Terminal 2: Start Next.js app
+pnpm dev
 ```
 
-**Request Format:**
+**WebSocket Server Details:**
+- Port: 3013
+- Path: `/ws/elevenlabs-tts`
+- ดู [websocket-tts-server.ts](../apps/demo/server/websocket-tts-server.ts)
+
+**API Message Formats:**
 ```json
+// Request
 {
   "type": "tts",
-  "text": "ข้อความที่ต้องการแปลงเป็นเสียง",
+  "text": "ข้อความที่ต้องการแปลง",
   "voice_id": "21m00Tcm4TlvDq8ikWAM",
-  "model_id": "eleven_v3",
-  "stability": 0.5,
-  "similarity_boost": 0.75,
-  "style": 0.0,
-  "speed": 1.0
+  "model_id": "eleven_v3"
 }
-```
 
-**Response Format:**
-```json
+// Response
 {
   "type": "audio_chunk",
   "chunk_index": 0,
   "total_chunks": 5,
-  "audio_data": "base64_encoded_pcm_data...",
-  "text": "ข้อความของ chunk นี้",
+  "audio_data": "base64_encoded_pcm...",
   "format": "pcm_24000"
 }
 ```
 
-**Text Chunking Implementation:**
+### วิธีการใช้งาน React Hook
+
 ```typescript
-function chunkText(text: string): string[] {
-  console.log('🔪 [CHUNKING] Starting text chunking...');
-  console.log(`📝 [CHUNKING] Original text: "${text}"`);
+import { useWebSocketTTS } from '@/liveavatar/useWebSocketTTS';
 
-  const chunks: string[] = [];
-  const delimiters = [',', '!', '?', ' '];
-  let currentChunk = '';
-
-  for (let i = 0; i < text.length; i++) {
-    currentChunk += text[i];
-
-    if (delimiters.includes(text[i])) {
-      if (currentChunk.trim().length > 0) {
-        chunks.push(currentChunk.trim());
-        console.log(`  ✂️ [CHUNKING] Created chunk: "${currentChunk.trim()}"`);
-        currentChunk = '';
-      }
-    }
-  }
-
-  if (currentChunk.trim().length > 0) {
-    chunks.push(currentChunk.trim());
-    console.log(`  ✂️ [CHUNKING] Final chunk: "${currentChunk.trim()}"`);
-  }
-
-  const result = chunks.length > 0 ? chunks : [text];
-  console.log(`✅ [CHUNKING] Total chunks created: ${result.length}`);
-
-  return result;
-}
-```
-
-**Logging Examples:**
-```
-🔪 [CHUNKING] Starting text chunking...
-📝 [CHUNKING] Original text: "สวัสดีครับ, ยินดีต้อนรับสู่ระบบ Voice-to-Voice!"
-  ✂️ [CHUNKING] Created chunk: "สวัสดีครับ,"
-  ✂️ [CHUNKING] Created chunk: "ยินดีต้อนรับสู่ระบบ"
-  ✂️ [CHUNKING] Final chunk: "Voice-to-Voice!"
-✅ [CHUNKING] Total chunks created: 3
-
-🎯 [TTS] Processing chunk 1/3
-  Text: "สวัสดีครับ,"
-📞 [TTS] Calling ElevenLabs API...
-✅ [TTS] Received audio for chunk 1
-📤 [TTS] Sent chunk 1/3 to client
-```
-
-#### 2. React Hook for WebSocket TTS (ยังไม่ได้สร้าง)
-
-**ไฟล์ที่ต้องสร้าง:** `apps/demo/src/liveavatar/useWebSocketTTS.ts`
-
-**Hook Interface:**
-```typescript
-interface TTSConfig {
-  wsUrl?: string;                    // default: ws://localhost:3013/ws/elevenlabs-tts
-  voiceId?: string;                  // default: 21m00Tcm4TlvDq8ikWAM
-  modelId?: string;                  // default: eleven_v3
-  stability?: number;                // default: 0.5
-  similarityBoost?: number;          // default: 0.75
-  style?: number;                    // default: 0.0
-  speed?: number;                    // default: 1.0
-  onAudioChunk?: (chunk: string, index: number, total: number) => void;
-  onComplete?: (totalChunks: number) => void;
-  onError?: (error: string) => void;
-}
-
-export function useWebSocketTTS(config: TTSConfig = {}) {
-  // Returns:
-  const {
-    isConnected,        // WebSocket connection status
-    isSynthesizing,     // Currently processing TTS
-    progress,           // { current: 0, total: 0 }
-    connect,            // Connect to WebSocket
-    disconnect,         // Disconnect from WebSocket
-    synthesize,         // synthesize(text: string) - Start TTS
-    stop                // Stop current synthesis
-  }
-}
-```
-
-**การใช้งาน:**
-```typescript
-const {
-  isConnected,
-  isSynthesizing,
-  progress,
-  connect,
-  disconnect,
-  synthesize
-} = useWebSocketTTS({
+const { isConnected, isSynthesizing, progress, connect, synthesize } = useWebSocketTTS({
   voiceId: '21m00Tcm4TlvDq8ikWAM',
   modelId: 'eleven_v3',
-  stability: 0.5,
-  similarityBoost: 0.75,
-  style: 0.0,
-  speed: 1.0,
-  onComplete: (totalChunks) => {
-    console.log(`✅ TTS completed with ${totalChunks} chunks`);
-  }
+  onComplete: (total) => console.log(`Completed ${total} chunks`)
 });
 
-// Connect
+// Connect on mount
 useEffect(() => {
   connect();
   return () => disconnect();
 }, []);
 
-// Synthesize
-const handleSpeak = () => {
-  synthesize('สวัสดีครับ ยินดีต้อนรับสู่ระบบ Voice-to-Voice!');
-};
+// Synthesize text
+synthesize('สวัสดีครับ ยินดีต้อนรับ');
 ```
 
-**Audio Playback Implementation:**
-```typescript
-// Queue-based sequential playback
-const audioQueue = useRef<ArrayBuffer[]>([]);
-const isPlaying = useRef(false);
-
-const playNextChunk = useCallback(async () => {
-  if (audioQueue.current.length === 0) {
-    isPlaying.current = false;
-    console.log('🎵 Playback finished');
-    return;
-  }
-
-  isPlaying.current = true;
-  const audioData = audioQueue.current.shift();
-
-  try {
-    const audioBuffer = await audioContext.decodeAudioData(audioData);
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-    console.log('🔊 Playing audio chunk...');
-
-    source.onended = () => {
-      playNextChunk(); // Auto-play next chunk
-    };
-  } catch (error) {
-    console.error('❌ Audio decode error:', error);
-    playNextChunk(); // Skip to next chunk
-  }
-}, []);
-
-// Handle incoming audio chunk
-const handleAudioChunk = useCallback((data: any) => {
-  console.log(`📦 Received chunk ${data.chunk_index + 1}/${data.total_chunks}`);
-
-  const audioData = base64ToArrayBuffer(data.audio_data);
-  audioQueue.current.push(audioData);
-
-  // Start playback if not already playing
-  if (!isPlaying.current) {
-    playNextChunk();
-  }
-
-  // Update progress
-  setProgress({
-    current: data.chunk_index + 1,
-    total: data.total_chunks
-  });
-}, [playNextChunk]);
-```
-
-#### 3. HTML Test Page (ยังไม่ได้สร้าง)
-
-**ไฟล์ที่ต้องสร้าง:** `apps/demo/public/test-elevenlabs-ws-tts.html`
-
-**Features:**
-- 🎨 Beautiful gradient UI design
-- 🔌 WebSocket connection controls
-- 📝 Text input textarea (default Thai text)
-- 🎛️ Voice settings inputs with defaults
-- 📊 Real-time progress bar
-- 📋 Color-coded logging console
-- 🔊 Web Audio API integration
-
-**วิธีใช้:**
-1. รัน WebSocket server: `pnpm ws-tts`
-2. เปิด `apps/demo/public/test-elevenlabs-ws-tts.html` ในเบราว์เซอร์
-3. กด "Connect to WebSocket"
-4. กรอกข้อความ หรือใช้ default text
-5. ปรับ voice settings ตามต้องการ
-6. กด "เริ่มพูด"
-7. ดู progress bar และ logs
-8. ฟังเสียงแบบ streaming
-
-**Default Settings:**
-```javascript
-voice_id: "21m00Tcm4TlvDq8ikWAM"
-model_id: "eleven_v3"
-stability: 0.5
-similarity_boost: 0.75
-style: 0.0
-speed: 1.0
-```
-
-#### 4. Package.json Script (ยังไม่ได้เพิ่ม)
-
-**ไฟล์ที่ต้องแก้:** [apps/demo/package.json](../apps/demo/package.json:1)
-
-**ต้องเพิ่ม:**
-```json
-{
-  "scripts": {
-    "ws-tts": "tsx server/websocket-tts-server.ts"  // ← ยังไม่มี script นี้
-  },
-  "dependencies": {
-    "@elevenlabs/client": "^0.10.0"  // ← มีแล้ว ✅
-  },
-  "devDependencies": {
-    "tsx": "^4.x.x",  // ← อาจต้องติดตั้งเพิ่ม
-    "ws": "^8.x.x"    // ← อาจต้องติดตั้งเพิ่ม
-  }
-}
-```
+ดูรายละเอียดเพิ่มเติมใน [useWebSocketTTS.ts](../apps/demo/src/liveavatar/useWebSocketTTS.ts)
 
 ### Integration กับ Voice-to-Voice Flow (ยังไม่ได้ทำ)
 
@@ -843,7 +576,6 @@ Avatar Lip-sync
 4. ✅ **รองรับข้อความยาว** - แบ่งเป็น chunks แล้วประมวลผล
 5. ✅ **Detailed Logging** - ติดตามทุก operation
 6. ✅ **Easy Integration** - React Hook พร้อมใช้
-7. ✅ **HTML Test Page** - ทดสอบง่าย ไม่ต้องรวม code
 
 ### ข้อจำกัด (Limitations)
 
@@ -894,8 +626,8 @@ pnpm ws-tts
 # Terminal 2: Start Next.js app
 pnpm dev
 
-# Browser: Open test page
-open http://localhost:3012/test-elevenlabs-ws-tts.html
+# เปิดเบราว์เซอร์: http://localhost:3012
+# ทดสอบ V2V flow ด้วย CUSTOM mode
 ```
 
 **2. Debug Logs:**
@@ -925,913 +657,139 @@ open http://localhost:3012/test-elevenlabs-ws-tts.html
 **Issue:** Chunks playing out of order
 **Solution:** ใช้ queue-based sequential playback (ดู code ด้านบน)
 
-### ผลลัพธ์การทำงาน (Results)
+### สถานะการพัฒนา
 
-🚧 **กำลังดำเนินการ Implement (5%)**
-- ✅ **Task 1: Setup Project Structure - เสร็จสมบูรณ์**
-  - ✅ โฟลเดอร์ `apps/demo/server/` ถูกสร้างแล้ว
-  - ✅ ติดตั้ง `ws@8.18.3` แล้ว
-  - ✅ ติดตั้ง `@types/ws@8.18.1` แล้ว
-  - ✅ ติดตั้ง `tsx@4.20.6` แล้ว
-  - ✅ เพิ่ม npm script `"ws-tts"` ใน package.json แล้ว
-- ❌ Task 2: Custom WebSocket server - ยังไม่ได้สร้าง
-- ❌ Task 3: React Hook - ยังไม่ได้สร้าง
-- ❌ Task 4: HTML test page - ยังไม่ได้สร้าง
-- ❌ Task 5: Integration กับ Phase 4 - ยังไม่ได้ทำ
-- ❌ Task 6: Testing & Documentation - ยังไม่ได้ทำ
-- ✅ มี design documentation ครบถ้วน
-- ✅ มี reference implementation (Go backend) ใน [WS_TTS_EL.md](./WS_TTS_EL.md)
-- ❌ Not production ready - ต้อง implement tasks ที่เหลือ
+✅ **Tasks เสร็จแล้ว (60%):**
+- Task 1: Project structure setup
+- Task 2: WebSocket server implementation (รองรับ delimiters ครบ: `,` `!` `?` `:` `;` `.`)
+- Task 3: React hook implementation
 
-### 📋 Implementation Plan: Tasks & Steps
+❌ **Tasks ที่ยังต้องทำ (40%):**
+- Task 4: Integration กับ LiveAvatarSession (~1.5-2 hours)
+- Task 5: Testing & Documentation (~1-1.5 hours)
 
-#### **Task 1: Setup Project Structure** ✅ **เสร็จสมบูรณ์** (เวลาที่ใช้: ~5 นาที)
+**Status:** 🚧 Not production ready - ต้อง complete Tasks 4-5
 
-**Step 1.1: สร้างโครงสร้างโฟลเดอร์** ✅
-```bash
-mkdir -p apps/demo/server
-```
+### 📋 Tasks ที่ยังต้องทำ (4-5)
 
-**Step 1.2: ติดตั้ง Dependencies ที่จำเป็น** ✅
-```bash
-cd apps/demo
-pnpm add ws
-pnpm add -D @types/ws tsx
-```
+#### **Task 4: Integration with Voice-to-Voice Flow** ❌ (Estimated: 1.5-2 hours)
 
-**ผลลัพธ์:**
-- ✅ ติดตั้ง `ws@8.18.3` (WebSocket library)
-- ✅ ติดตั้ง `@types/ws@8.18.1` (TypeScript types)
-- ✅ ติดตั้ง `tsx@4.20.6` (TypeScript execution)
-
-**Step 1.3: อัพเดต package.json** ✅
-- ✅ เพิ่ม script `"ws-tts": "tsx server/websocket-tts-server.ts"`
-
-**Deliverables:**
-- ✅ โฟลเดอร์ `apps/demo/server/` ถูกสร้าง
-- ✅ Dependencies ครบถ้วน (ws, @types/ws, tsx)
-- ✅ npm script `pnpm ws-tts` พร้อมใช้งาน
-
-**Status:** ✅ **COMPLETED** - พร้อมสำหรับ Task 2
-
-**🧪 วิธีทดสอบ Task 1:**
-```bash
-# 1. ตรวจสอบโฟลเดอร์
-ls -la apps/demo/server/
-
-# 2. ตรวจสอบ dependencies ใน package.json
-cat apps/demo/package.json | grep -E '"ws"|"tsx"|"@types/ws"'
-
-# 3. ตรวจสอบ npm script
-cat apps/demo/package.json | grep "ws-tts"
-
-# Expected: ทุก command ต้องแสดงผลถูกต้อง
-```
-
----
-
-#### **Task 2: Implement WebSocket Server** ✅ **เสร็จสมบูรณ์ - อัพเดต 2025-11-13** (เวลาที่ใช้: ~45 นาที + 15 นาที update)
-
-**Step 2.1: สร้างโครงสร้างพื้นฐานของ Server** ✅
-- สร้างไฟล์ `apps/demo/server/websocket-tts-server.ts`
-- Import libraries ที่จำเป็น (ws, http, @elevenlabs/client)
-- Setup WebSocket server บน port 3013
-- Implement basic connection handling
-
-**Step 2.2: Implement Text Chunking Logic** ✅ **อัพเดต 2025-11-13**
-- ✅ สร้าง function `chunkText(text: string, maxChunkSize: number): string[]`
-- ✅ รองรับ primary delimiters: `.` `!` `?` (Period, Exclamation, Question)
-- ✅ รองรับ secondary delimiters: `,` `;` `:` (Comma, Semicolon, Colon) **อัพเดตเพิ่มเติม 2025-11-13**
-- ✅ **Smart chunking strategy:**
-  - Primary delimiters: Flush เมื่อ chunk > 50% ของ maxChunkSize
-  - Secondary delimiters: Flush เมื่อ chunk > 70% ของ maxChunkSize
-- ✅ Implement logging สำหรับ debug (🔪, ✂️, ✅)
-- ✅ รองรับทั้งภาษาไทยและภาษาอังกฤษ
-- ✅ Edge case handling (empty text, single chunk, fallback to space delimiter)
-
-**Step 2.3: Integrate ElevenLabs API** ✅
-- ✅ ใช้ ElevenLabs REST API โดยตรง (`https://api.elevenlabs.io/v1/text-to-speech/{voice_id}`)
-- ✅ อ่าน ELEVENLABS_API_KEY จาก environment variables
-- ✅ สร้าง function เรียก TTS API แต่ละ chunk ด้วย fetch()
-- ✅ Handle audio response และแปลงเป็น base64
-- ✅ Implement error handling สำหรับ API calls
-- ✅ รองรับ voice_settings (stability, similarity_boost, style, speed)
-
-**Step 2.4: Implement WebSocket Message Handling** ✅
-- ✅ รับ TTS request message จาก client (type: 'tts')
-- ✅ แบ่งข้อความเป็น chunks ด้วย chunkText()
-- ✅ Loop ผ่านแต่ละ chunk:
-  - ✅ เรียก ElevenLabs API
-  - ✅ แปลง audio เป็น base64
-  - ✅ ส่ง audio_chunk message กลับไปยัง client
-- ✅ ส่ง completion message
-- ✅ Implement stop request handling (type: 'stop')
-- ✅ Implement ping/pong for connection health check
-
-**Step 2.5: Add Detailed Logging & Error Handling** ✅
-- ✅ เพิ่ม emoji-based logging (🚀, 🔌, 📞, 🎤, 🔪, ✂️, 🎯, 📝, ✅, 📤, 🛑, ❌)
-- ✅ Log ทุก operation สำคัญ (connection, chunking, API calls, sending)
-- ✅ Handle WebSocket connection errors
-- ✅ Handle ElevenLabs API errors
-- ✅ Graceful shutdown (SIGINT handler)
-- ✅ Per-chunk error handling (continue on error)
-
-**Deliverables:**
-- ✅ ไฟล์ `apps/demo/server/websocket-tts-server.ts` ใช้งานได้ (340 บรรทัด) **อัพเดต 2025-11-13**
-- ✅ Text chunking ทำงานถูกต้องพร้อม edge case handling **อัพเดตรองรับ secondary delimiters (`,` `;` `:`) 2025-11-13**
-- ✅ เชื่อมต่อ ElevenLabs TTS API สำเร็จผ่าน REST API
-- ✅ WebSocket communication ทำงานได้ครบถ้วน (connection, message, close, error)
-- ✅ Logging ครบถ้วนและชัดเจน
-- ✅ ผ่าน TypeScript type checking
-
-**Status:** ✅ **COMPLETED - อัพเดต 2025-11-13** - พร้อมสำหรับ Task 3
-
-**📋 Changelog 2025-11-13:**
-- ✅ อัพเดต `chunkText()` function เพื่อรองรับ secondary delimiters (`,` `;` `:`) ครบถ้วน
-- ✅ เพิ่ม smart chunking strategy:
-  - Primary delimiters (`.` `!` `?`): Flush at 50% maxChunkSize
-  - Secondary delimiters (`,` `;` `:`): Flush at 70% maxChunkSize
-- ✅ ปรับปรุง logging messages ให้ชัดเจนขึ้น (แยก primary/secondary/final chunks)
-- ✅ เพิ่ม combined regex `/([.!?,;:])/g` สำหรับ split ทุก delimiters พร้อมกัน
-- ✅ ลบ unused variables เพื่อผ่าน TypeScript linting
-
-**🧪 วิธีทดสอบ Task 2:**
-
-**Test 2.1: ทดสอบการรัน WebSocket Server**
-```bash
-# Terminal 1: รัน WebSocket server
-cd apps/demo
-pnpm ws-tts
-
-# Expected:
-# ✅ Server เริ่มต้นได้โดยไม่มี error
-# ✅ แสดง log "WebSocket server listening on port 3013"
-# ✅ ไม่มี TypeScript compilation errors
-```
-
-**Test 2.2: ทดสอบ Text Chunking Logic**
-```bash
-# ใน server code เพิ่ม test case ชั่วคราว:
-const testText = "สวัสดีครับ, ยินดีต้อนรับ! ทดสอบระบบ? ขอบคุณมากครับ";
-const chunks = chunkText(testText);
-console.log('Chunks:', chunks);
-
-# Expected output:
-# Chunks: ["สวัสดีครับ,", "ยินดีต้อนรับ!", "ทดสอบระบบ?", "ขอบคุณมากครับ"]
-```
-
-**Test 2.3: ทดสอบ WebSocket Connection (ใช้ websocat หรือ wscat)**
-```bash
-# ติดตั้ง wscat
-npm install -g wscat
-
-# Terminal 2: เชื่อมต่อ WebSocket
-wscat -c ws://localhost:3013/ws/elevenlabs-tts
-
-# Expected:
-# ✅ Connected สำเร็จ
-# ✅ Server log แสดง "Client connected"
-```
-
-**Test 2.4: ทดสอบ TTS Request (ต้องมี ElevenLabs API key ใน .env)**
-```bash
-# ส่ง message ผ่าน wscat:
-{
-  "type": "tts",
-  "text": "สวัสดีครับ ยินดีต้อนรับ",
-  "voice_id": "21m00Tcm4TlvDq8ikWAM",
-  "model_id": "eleven_v3",
-  "stability": 0.5,
-  "similarity_boost": 0.75
-}
-
-# Expected:
-# ✅ Server log แสดง text chunking process
-# ✅ Server log แสดง "Calling ElevenLabs API..."
-# ✅ Receive audio_chunk messages กลับมา
-# ✅ Receive completion message
-# ✅ ไม่มี API errors
-```
-
-**Test 2.5: ทดสอบ Error Handling**
-```bash
-# Test 1: ส่ง invalid message format
-{"invalid": "data"}
-
-# Expected: Server ส่ง error message กลับมา
-
-# Test 2: ปิด .env หรือใส่ API key ผิด
-# Expected: Server log แสดง authentication error
-```
-
-**Testable Criteria:**
-- ✅ Server รันได้บน port 3013 โดยไม่ crash
-- ✅ Text chunking แบ่งข้อความถูกต้อง (ทดสอบด้วย console.log)
-- ✅ รับ WebSocket connection ได้
-- ✅ Process TTS request และส่ง audio chunks กลับมา
-- ✅ Emoji logging แสดงผลชัดเจน
-- ✅ Error handling ทำงานถูกต้อง
-
----
-
-#### **Task 3: Create React Hook** ✅ **เสร็จสมบูรณ์** (เวลาที่ใช้: ~1 ชั่วโมง)
-
-**Step 3.1: สร้างโครงสร้าง Hook พื้นฐาน** ✅
-- ✅ สร้างไฟล์ `apps/demo/src/liveavatar/useWebSocketTTS.ts`
-- ✅ Define TypeScript interfaces (TTSConfig, TTSProgress, WebSocketMessage, AudioChunkMessage)
-- ✅ Setup state management (isConnected, isSynthesizing, progress)
-- ✅ Export hook interface
-
-**Step 3.2: Implement WebSocket Connection Management** ✅
-- ✅ สร้าง `connect()` function พร้อม error handling
-- ✅ สร้าง `disconnect()` function พร้อม cleanup
-- ✅ Handle connection errors และ onclose events
-- ✅ Setup event listeners (onopen, onmessage, onerror, onclose)
-- ✅ Implement `ping()` utility function
-
-**Step 3.3: Implement Audio Queue & Sequential Playback** ✅
-- ✅ Setup Web Audio API context (AudioContext with browser compatibility)
-- ✅ สร้าง audio queue (useRef<ArrayBuffer[]>)
-- ✅ Implement `playNextChunk()` function:
-  - ✅ Decode audio data (base64 → ArrayBuffer → AudioBuffer)
-  - ✅ Create buffer source
-  - ✅ Connect to audio destination
-  - ✅ Auto-play next chunk when current finishes
-  - ✅ Handle audio context suspended state (browser autoplay policy)
-- ✅ Handle audio decode errors with fallback to next chunk
-
-**Step 3.4: Implement TTS Message Handling** ✅
-- ✅ สร้าง `synthesize(text: string)` function พร้อม validation
-- ✅ Send TTS request via WebSocket with all parameters
-- ✅ Handle incoming audio_chunk messages
-- ✅ Handle completion messages
-- ✅ Update progress state แบบ real-time
-- ✅ Trigger callbacks (onAudioChunk, onComplete, onError, onConnectionChange)
-
-**Step 3.5: Add Cleanup & Stop Functions** ✅
-- ✅ Implement `stop()` function
-- ✅ Cleanup audio queue
-- ✅ Stop current playback
-- ✅ Send stop message to server
-- ✅ Cleanup on unmount (useEffect)
-- ✅ Close AudioContext on unmount
-
-**Deliverables:**
-- ✅ ไฟล์ `useWebSocketTTS.ts` ใช้งานได้ (517 lines)
-- ✅ WebSocket connection stable พร้อม reconnection support
-- ✅ Audio playback ทำงานถูกต้องแบบ sequential
-- ✅ Progress tracking ถูกต้อง (current/total + currentText)
-- ✅ Error handling ครบถ้วนทุก edge cases
-- ✅ TypeScript types export สำหรับใช้ในโปรเจกต์อื่น
-
-**Status:** ✅ **COMPLETED** - พร้อมสำหรับ Task 4
-
-**🧪 วิธีทดสอบ Task 3:**
-
-**Test 3.1: ทดสอบ Hook ด้วย Simple Test Component**
-```typescript
-// สร้าง apps/demo/app/test-ws-tts/page.tsx (ชั่วคราว)
-'use client';
-import { useWebSocketTTS } from '@/liveavatar/useWebSocketTTS';
-
-export default function TestWSTTS() {
-  const { isConnected, isSynthesizing, progress, connect, synthesize } = useWebSocketTTS({
-    onComplete: (total) => console.log('Completed:', total),
-    onError: (err) => console.error('Error:', err)
-  });
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h1>Test WebSocket TTS Hook</h1>
-      <p>Connected: {isConnected ? 'YES' : 'NO'}</p>
-      <p>Synthesizing: {isSynthesizing ? 'YES' : 'NO'}</p>
-      <p>Progress: {progress.current}/{progress.total}</p>
-
-      <button onClick={connect}>Connect</button>
-      <button onClick={() => synthesize('สวัสดีครับ ทดสอบระบบ')}>
-        Test Speak
-      </button>
-    </div>
-  );
-}
-```
-
-```bash
-# รัน Next.js และทดสอบ
-pnpm dev
-# เปิด http://localhost:3012/test-ws-tts
-
-# Expected:
-# ✅ กด Connect → isConnected เป็น true
-# ✅ กด Test Speak → ได้ยินเสียง
-# ✅ Progress bar update ถูกต้อง
-```
-
-**Test 3.2: ทดสอบ Audio Queue & Sequential Playback**
-```typescript
-// ทดสอบด้วยข้อความยาวๆ ที่แบ่งเป็นหลาย chunks
-synthesize('สวัสดีครับ, ยินดีต้อนรับสู่ระบบ! ขอบคุณมากครับ.');
-
-// Expected:
-# ✅ เสียงเล่นต่อเนื่องไม่สะดุด
-# ✅ ไม่มี gaps ระหว่าง chunks
-# ✅ เล่นตามลำดับถูกต้อง
-```
-
-**Test 3.3: ทดสอบ Connection Management**
-```bash
-# Test reconnection:
-# 1. Connect
-# 2. ปิด WebSocket server (Ctrl+C ที่ terminal server)
-# 3. สังเกต error handling
-# 4. เปิด server ใหม่
-# 5. กด Connect อีกครั้ง
-
-# Expected:
-# ✅ แสดง error เมื่อ server ปิด
-# ✅ Connect ใหม่ได้เมื่อ server เปิด
-```
-
-**Test 3.4: ทดสอบ Stop Function**
-```bash
-# 1. เริ่ม synthesize ข้อความยาวๆ
-# 2. กด Stop ระหว่างเล่น
-
-# Expected:
-# ✅ เสียงหยุดทันที
-# ✅ Audio queue ถูก clear
-# ✅ isSynthesizing เป็น false
-```
-
-**Test 3.5: ทดสอบ TypeScript Types**
-```bash
-cd apps/demo
-pnpm typecheck
-
-# Expected:
-# ✅ ไม่มี TypeScript errors
-# ✅ Interfaces exported ถูกต้อง
-```
-
-**Testable Criteria:**
-- ✅ Hook ไม่ crash เมื่อ mount/unmount
-- ✅ WebSocket connection/disconnection ทำงาน
-- ✅ Audio เล่นแบบ sequential ไม่สะดุด
-- ✅ Progress tracking update real-time
-- ✅ Error callbacks ถูกเรียกเมื่อมี error
-- ✅ Stop function ทำงานถูกต้อง
-- ✅ ไม่มี memory leaks (ตรวจสอบด้วย React DevTools Profiler)
-
----
-
-#### **Task 4: Create HTML Test Page** (Estimated: 1-2 ชั่วโมง)
-
-**Step 4.1: สร้างโครงสร้าง HTML พื้นฐาน (20 นาที)**
-- สร้างไฟล์ `apps/demo/public/test-elevenlabs-ws-tts.html`
-- Add HTML structure
-- Import Web Audio API
-- Setup basic CSS (gradient background)
-
-**Step 4.2: Implement UI Components (40 นาที)**
-- Connection controls (Connect/Disconnect button)
-- Text input textarea (default Thai text)
-- Voice settings inputs:
-  - Voice ID
-  - Model ID
-  - Stability
-  - Similarity Boost
-  - Style
-  - Speed
-- Speak button
-- Progress bar
-- Logging console
-
-**Step 4.3: Implement WebSocket Client Logic (30 นาที)**
-- WebSocket connection to `ws://localhost:3013/ws/elevenlabs-tts`
-- Send TTS request with user inputs
-- Receive and handle audio_chunk messages
-- Update progress bar
-- Display logs with color coding
-
-**Step 4.4: Implement Audio Playback (30 นาที)**
-- Setup Web Audio API
-- Implement audio queue
-- Decode base64 audio data
-- Sequential playback logic
-- Handle playback errors
-
-**Deliverables:**
-- ✅ ไฟล์ `test-elevenlabs-ws-tts.html` ใช้งานได้
-- ✅ UI สวยงามและใช้งานง่าย
-- ✅ เชื่อมต่อ WebSocket ได้
-- ✅ เล่นเสียงได้ถูกต้อง
-- ✅ Logs แสดงผลชัดเจน
-
-**🧪 วิธีทดสอบ Task 4:**
-
-**Test 4.1: เปิด HTML Test Page**
-```bash
-# Terminal 1: รัน WebSocket server
-cd apps/demo
-pnpm ws-tts
-
-# Terminal 2: รัน Next.js (เพื่อ serve static files)
-pnpm dev
-
-# เปิดเบราว์เซอร์:
-http://localhost:3012/test-elevenlabs-ws-tts.html
-
-# Expected:
-# ✅ หน้าเว็บแสดงผลสวยงาม (gradient background)
-# ✅ ไม่มี JavaScript errors ใน console
-# ✅ UI components แสดงครบ
-```
-
-**Test 4.2: ทดสอบ WebSocket Connection**
-```bash
-# บนหน้า HTML test page:
-# 1. กดปุ่ม "Connect to WebSocket"
-
-# Expected:
-# ✅ Status เปลี่ยนเป็น "Connected"
-# ✅ ปุ่มเปลี่ยนเป็น "Disconnect"
-# ✅ Log console แสดง "Connected to WebSocket"
-# ✅ Server terminal แสดง "Client connected"
-```
-
-**Test 4.3: ทดสอบ TTS Synthesis**
-```bash
-# 1. กรอกข้อความในช่อง Text (เช่น "สวัสดีครับ ทดสอบระบบ")
-# 2. ปรับ Voice Settings ตามต้องการ
-# 3. กดปุ่ม "เริ่มพูด"
-
-# Expected:
-# ✅ Progress bar แสดงความคืบหน้า
-# ✅ Logs แสดงข้อความ color-coded:
-#    - 🔪 Text chunking
-#    - 📞 API calls
-#    - 📦 Receiving chunks
-#    - ✅ Success messages
-# ✅ ได้ยินเสียงพูดออกมา
-# ✅ เสียงต่อเนื่องไม่สะดุด
-# ✅ หลังเสร็จแสดง "Completed: X chunks"
-```
-
-**Test 4.4: ทดสอบ Voice Settings**
-```bash
-# ทดสอบแต่ละ parameter:
-
-# Test Stability (0.0 - 1.0)
-stability: 0.2 → เสียงมีอารมณ์มากขึ้น
-stability: 0.8 → เสียงคงที่มากขึ้น
-
-# Test Speed (0.7 - 1.2)
-speed: 0.8 → พูดช้าลง
-speed: 1.2 → พูดเร็วขึ้น
-
-# Test Style (0.0 - 1.0) - เฉพาะ eleven_v3
-style: 0.0 → neutral
-style: 1.0 → expressive
-
-# Expected:
-# ✅ เสียงเปลี่ยนตาม settings
-# ✅ ไม่มี errors
-```
-
-**Test 4.5: ทดสอบ Error Cases**
-```bash
-# Test 1: เชื่อมต่อโดยไม่ได้เปิด WebSocket server
-# Expected: แสดง error "Connection failed"
-
-# Test 2: ใส่ Voice ID ผิด
-# Expected: แสดง error จาก ElevenLabs API
-
-# Test 3: กรอกข้อความยาวมาก (>1000 characters)
-# Expected: แบ่งเป็น chunks และเล่นได้ครบ
-
-# Test 4: กดปุ่ม Speak ซ้อนกัน (ขณะกำลังเล่น)
-# Expected: ไม่ crash, อาจ queue หรือ ignore
-```
-
-**Test 4.6: ทดสอบ UI/UX**
-```bash
-# Checklist:
-# ✅ Buttons ไม่ disabled ผิดเวลา
-# ✅ Progress bar reset ถูกต้องเมื่อเริ่มใหม่
-# ✅ Logs scroll อัตโนมัติเมื่อมีข้อความใหม่
-# ✅ Text input รองรับภาษาไทยและภาษาอังกฤษ
-# ✅ Responsive design (ทดสอบบน mobile/tablet)
-```
-
-**Test 4.7: ทดสอบ Browser Compatibility**
-```bash
-# ทดสอบบน:
-# ✅ Chrome/Edge (Chromium)
-# ✅ Firefox
-# ✅ Safari (ถ้ามี Mac)
-
-# Expected:
-# ✅ Web Audio API ทำงานบนทุก browser
-# ✅ WebSocket connection stable
-# ✅ Audio playback ไม่มีปัญหา
-```
-
-**Testable Criteria:**
-- ✅ หน้าเว็บ load ได้โดยไม่มี errors
-- ✅ WebSocket connection/disconnection ทำงาน
-- ✅ TTS synthesis และ audio playback สำเร็จ
-- ✅ Voice settings มีผลต่อเสียงจริง
-- ✅ Progress bar update real-time
-- ✅ Logs แสดงผลชัดเจนด้วย color coding
-- ✅ Error handling ทำงานถูกต้อง
-- ✅ UI responsive และใช้งานง่าย
-
----
-
-#### **Task 5: Integration with Voice-to-Voice Flow** (Estimated: 1.5-2 ชั่วโมง)
-
-**Step 5.1: แก้ไข LiveAvatarSession Component (45 นาที)**
+**Step 4.1: แก้ไข LiveAvatarSession Component**
 - Import `useWebSocketTTS` hook
-- Add WebSocket TTS state management
+- Add WebSocket TTS state management  
 - Connect to WebSocket server on component mount
 - Disconnect on unmount
 
-**Step 5.2: Integrate กับ Phase 4 (Realtime STT) (30 นาที)**
+**Step 4.2: Integrate กับ Phase 4 (Realtime STT)**
 - ใช้ `getCombinedTranscript()` จาก useElevenLabsRealtimeSTT
 - เมื่อ user กด "Stop & Process with Avatar":
-  - Get transcript
+  - Get transcript from Realtime STT
   - Send to OpenAI Chat API
   - Get AI response
   - Send to WebSocket TTS (แทน REST API)
 
-**Step 5.3: Update UI Controls (15 นาที)**
+**Step 4.3: Update UI Controls**
 - เพิ่ม TTS progress indicator
 - แสดงสถานะ WebSocket connection
 - Disable controls ขณะ synthesizing
 - Show error messages
 
-**Step 5.4: Test Complete V2V Flow (30 นาที)**
-- Test: User speaks → STT → Chat → WebSocket TTS → Audio playback
-- Verify latency improvement
-- Test error scenarios
-- Test with different text lengths
-
 **Deliverables:**
-- ✅ LiveAvatarSession component integrated
-- ✅ Complete V2V flow ทำงานได้
-- ✅ Latency ลดลง (~1.5-2.5 วินาที)
-- ✅ UI แสดงสถานะถูกต้อง
+- LiveAvatarSession component integrated with WebSocket TTS
+- Complete V2V flow with reduced latency (~1.5-2.5s)
+- UI controls showing connection status and progress
 
-**🧪 วิธีทดสอบ Task 5:**
-
-**Test 5.1: ทดสอบ Complete Voice-to-Voice Flow**
+**วิธีทดสอบ:**
 ```bash
-# Terminal 1: รัน WebSocket TTS server
-cd apps/demo
+# Terminal 1: Start WebSocket TTS server
 pnpm ws-tts
 
-# Terminal 2: รัน Next.js app
+# Terminal 2: Start Next.js app
 pnpm dev
 
-# เปิดเบราว์เซอร์: http://localhost:3012
-# เลือก CUSTOM mode
-
-# ทดสอบ flow:
-# 1. กด "Start Realtime Voice Chat"
-# 2. พูดข้อความ (เช่น "สวัสดีครับ")
-# 3. กด "Stop & Process with Avatar"
-
-# Expected:
-# ✅ ElevenLabs STT แปลงเสียงเป็นข้อความ
-# ✅ OpenAI Chat ตอบกลับ
-# ✅ WebSocket TTS แปลงข้อความเป็นเสียง (แทน REST API)
-# ✅ Avatar พูดพร้อม lip-sync
-# ✅ Total latency ~1.5-2.5 วินาที (เร็วกว่า REST API)
+# ทดสอบ V2V Flow:
+# 1. เลือก CUSTOM mode
+# 2. Start Realtime Voice Chat
+# 3. พูดข้อความ
+# 4. Stop & Process with Avatar
+# 5. ตรวจสอบว่า Avatar ตอบกลับด้วย WebSocket TTS
 ```
-
-**Test 5.2: ทดสอบ WebSocket TTS Integration**
-```bash
-# ตรวจสอบว่า LiveAvatarSession ใช้ WebSocket TTS:
-
-# Expected behavior:
-# ✅ Component connect to ws://localhost:3013 เมื่อ mount
-# ✅ UI แสดงสถานะ "WebSocket TTS: Connected"
-# ✅ เมื่อมี AI response → ส่งไปยัง WebSocket TTS (ไม่ใช่ REST API)
-# ✅ Progress indicator แสดงขณะ synthesizing
-# ✅ Component disconnect เมื่อ unmount
-```
-
-**Test 5.3: ทดสอบ UI Controls**
-```bash
-# Checklist:
-# ✅ แสดงสถานะ WebSocket connection (Connected/Disconnected)
-# ✅ Disable controls ขณะ TTS กำลัง synthesize
-# ✅ แสดง progress bar ขณะ synthesize (X/Y chunks)
-# ✅ แสดง error message ถ้า WebSocket server ไม่ทำงาน
-# ✅ ปุ่ม "Stop & Process" ทำงานถูกต้อง
-```
-
-**Test 5.4: ทดสอบ Error Scenarios**
-```bash
-# Test 1: WebSocket server ไม่ทำงาน
-# 1. ไม่เปิด pnpm ws-tts
-# 2. ลอง start realtime voice chat
-
-# Expected:
-# ✅ แสดง error "WebSocket TTS not connected"
-# ✅ fallback ไปใช้ REST TTS API (ถ้ามี) หรือแสดง error
-# ✅ ไม่ crash
-
-# Test 2: WebSocket disconnect ระหว่างการใช้งาน
-# 1. เริ่มใช้งาน V2V
-# 2. ปิด WebSocket server (Ctrl+C)
-# 3. พยายาม synthesize
-
-# Expected:
-# ✅ แสดง error "Connection lost"
-# ✅ UI update สถานะเป็น Disconnected
-# ✅ ไม่ crash
-
-# Test 3: ข้อความยาวมาก
-# 1. พูดข้อความยาว (>500 characters)
-
-# Expected:
-# ✅ แบ่งเป็น chunks อัตโนมัติ
-# ✅ เล่นต่อเนื่องไม่สะดุด
-# ✅ Avatar lip-sync ถูกต้อง
-```
-
-**Test 5.5: เปรียบเทียบ Performance กับ REST API**
-```bash
-# ทดสอบ 2 scenarios:
-
-# Scenario A: REST TTS API (เดิม)
-# - ปิด WebSocket server
-# - ใช้ REST API endpoint
-# - วัด latency จาก user พูด → Avatar พูด
-
-# Scenario B: WebSocket TTS (ใหม่)
-# - เปิด WebSocket server
-# - ใช้ WebSocket TTS
-# - วัด latency จาก user พูด → Avatar พูด
-
-# Expected:
-# ✅ WebSocket TTS เร็วกว่า 40-50%
-# ✅ WebSocket: ~1.5-2.5 วินาที
-# ✅ REST API: ~3-5 วินาที
-```
-
-**Test 5.6: ทดสอบการทำงานร่วมกับ Phase 4**
-```bash
-# ตรวจสอบ integration กับ ElevenLabs Realtime STT:
-
-# 1. Start realtime voice chat
-# 2. พูด: "สวัสดีครับ ผมชื่อจอห์น"
-# 3. ตรวจสอบ console log
-
-# Expected:
-# ✅ STT transcript: "สวัสดีครับ ผมชื่อจอห์น"
-# ✅ getCombinedTranscript() ได้ค่าถูกต้อง
-# ✅ ส่งไปยัง OpenAI Chat
-# ✅ ได้ AI response กลับมา
-# ✅ ส่งไปยัง WebSocket TTS
-# ✅ Avatar พูดได้ถูกต้อง
-```
-
-**Testable Criteria:**
-- ✅ Complete V2V flow ทำงานได้ end-to-end
-- ✅ WebSocket TTS integrate เข้ากับ LiveAvatarSession สำเร็จ
-- ✅ UI controls ทำงานถูกต้อง
-- ✅ Error handling ครบถ้วน (server down, disconnect, etc.)
-- ✅ Latency ลดลงจริง (~1.5-2.5 วินาที)
-- ✅ Integration กับ Phase 4 (Realtime STT) ทำงานได้
-- ✅ ไม่มี memory leaks หรือ performance issues
 
 ---
 
-#### **Task 6: Testing & Documentation** (Estimated: 1-1.5 ชั่วโมง)
+#### **Task 5: Testing & Documentation** ❌ (Estimated: 1-1.5 hours)
 
-**Step 6.1: End-to-End Testing (30 นาที)**
+**Step 5.1: End-to-End Testing**
 - Test WebSocket server startup/shutdown
-- Test HTML test page
 - Test React integration
 - Test error scenarios (network errors, API errors)
-- Test with long texts
-- Test with Thai and English
+- Test with long texts and Thai/English
 
-**Step 6.2: Performance Testing (20 นาที)**
+**Step 5.2: Performance Testing**
 - วัด latency (first chunk, total time)
 - เปรียบเทียบกับ REST API
-- ตรวจสอบ memory leaks
-- ตรวจสอบ audio quality
+- Target: First chunk <2s, Total 1.5-2.5s, 40-50% เร็วกว่า REST
+- ตรวจสอบ memory leaks และ audio quality
 
-**Step 6.3: Update Documentation (20 นาที)**
+**Step 5.3: Update Documentation**
 - อัพเดต V2V_REALTIME.md status เป็น 100%
 - เพิ่ม usage examples
 - เพิ่ม troubleshooting tips
-- อัพเดต latency numbers
+- อัพเดต latency numbers จริง
 
 **Deliverables:**
-- ✅ Test cases ผ่านทั้งหมด
-- ✅ Performance ตรงตาม target
-- ✅ Documentation updated
-- ✅ Production ready
+- Test cases ผ่านทั้งหมด
+- Performance ตรงตาม target
+- Documentation updated
+- Production ready
 
-**🧪 วิธีทดสอบ Task 6:**
-
-**Test 6.1: End-to-End Testing Checklist**
+**วิธีทดสอบ:**
 ```bash
-# ✅ Checklist ที่ต้องทดสอบครบทั้งหมด:
+# 1. WebSocket Server Tests
+pnpm ws-tts  # ตรวจสอบว่ารันได้โดยไม่ error
 
-# 1. WebSocket Server
-# ✅ รัน pnpm ws-tts ได้โดยไม่มี errors
-# ✅ Server รันบน port 3013
-# ✅ Graceful shutdown (Ctrl+C) ทำงานถูกต้อง
-# ✅ Log ชัดเจนและมี emoji
+# 2. Integration Tests  
+pnpm dev
+# ทดสอบ V2V flow ครบถ้วน
+# ทดสอบ error scenarios (server down, disconnect)
+# ทดสอบข้อความยาว
 
-# 2. HTML Test Page
-# ✅ เปิดหน้า test-elevenlabs-ws-tts.html ได้
-# ✅ Connect to WebSocket สำเร็จ
-# ✅ TTS synthesis ทำงานได้
-# ✅ Audio playback ไม่สะดุด
+# 3. Performance Tests
+# วัด latency ด้วย performance.now()
+# เปรียบเทียบ WebSocket TTS vs REST API
 
-# 3. React Integration
-# ✅ useWebSocketTTS hook ทำงานใน LiveAvatarSession
-# ✅ Component mount/unmount ไม่มี memory leaks
-# ✅ State management ถูกต้อง
-
-# 4. Error Scenarios
-# ✅ Server down: แสดง error ถูกต้อง
-# ✅ Network error: retry/reconnect ทำงาน
-# ✅ API error: แสดง error message
-# ✅ Invalid input: validation ทำงาน
-
-# 5. Edge Cases
-# ✅ ข้อความว่าง: handle ได้
-# ✅ ข้อความยาวมาก (>1000 chars): ทำงานได้
-# ✅ Special characters: ทำงานถูกต้อง
-# ✅ ภาษาไทย + English mixed: ทำงานได้
-
-# 6. Browser Compatibility
-# ✅ Chrome/Edge
-# ✅ Firefox
-# ✅ Safari (ถ้ามี)
+# 4. TypeScript Check
+pnpm typecheck  # ต้องผ่านไม่มี errors
 ```
-
-**Test 6.2: Performance Testing**
-```bash
-# 1. วัด Latency
-# ใช้ performance.now() ใน code:
-
-const start = performance.now();
-// ... TTS process ...
-const end = performance.now();
-console.log(`Latency: ${end - start}ms`);
-
-# Target metrics:
-# ✅ First chunk latency: <2000ms
-# ✅ Total latency: 1500-2500ms
-# ✅ เร็วกว่า REST API 40-50%
-
-# 2. วัด Memory Usage
-# เปิด Chrome DevTools > Performance/Memory tab
-# Record session ขณะใช้งาน V2V
-
-# Expected:
-# ✅ Memory ไม่เพิ่มขึ้นเรื่อยๆ (no leaks)
-# ✅ GC (Garbage Collection) ทำงานปกติ
-
-# 3. เปรียบเทียบกับ REST API
-# ทดสอบ 10 ครั้ง แต่ละวิธี:
-
-# WebSocket TTS Average:
-# - Latency: ~2000ms
-# - First chunk: ~1200ms
-
-# REST TTS Average:
-# - Latency: ~4000ms
-# - First response: ~3500ms
-
-# Improvement: 50% faster ✅
-
-# 4. Audio Quality
-# ฟังและเปรียบเทียบ:
-# ✅ ไม่มี artifacts หรือ distortion
-# ✅ Volume consistent
-# ✅ ไม่มี clicks/pops ระหว่าง chunks
-```
-
-**Test 6.3: Documentation Updates**
-```bash
-# ตรวจสอบว่าอัพเดตครบ:
-
-# 1. V2V_REALTIME.md
-# ✅ PHASE 5 status เป็น 100%
-# ✅ อัพเดต latency numbers จริง
-# ✅ เพิ่ม usage examples
-# ✅ เพิ่ม troubleshooting section
-
-# 2. README.md (ถ้ามี)
-# ✅ เพิ่ม WebSocket TTS setup instructions
-# ✅ อัพเดต performance metrics
-
-# 3. Code Comments
-# ✅ ทุก function มี JSDoc comments
-# ✅ Complex logic มี inline comments
-# ✅ TODO/FIXME ถูกลบหรือแก้ไขแล้ว
-
-# 4. Example Code
-# ✅ Usage examples ใน documentation
-# ✅ Test page เป็น reference ที่ดี
-```
-
-**Test 6.4: Production Readiness Checklist**
-```bash
-# Final checklist ก่อน deploy:
-
-# Security
-# ✅ API keys อยู่ใน .env (ไม่ commit ใน git)
-# ✅ WebSocket origin validation (production)
-# ✅ ไม่มี console.log sensitive data
-# ✅ Input validation ครบถ้วน
-
-# Performance
-# ✅ No memory leaks
-# ✅ Latency ตามเป้า (<2.5 วินาที)
-# ✅ Audio quality ดี
-# ✅ Error handling ครบ
-
-# Code Quality
-# ✅ pnpm typecheck ผ่าน
-# ✅ pnpm lint ผ่าน
-# ✅ ไม่มี warnings
-# ✅ Code formatted ถูกต้อง
-
-# Documentation
-# ✅ README complete
-# ✅ API documentation complete
-# ✅ Troubleshooting guide complete
-# ✅ Example code working
-
-# Testing
-# ✅ All test cases pass
-# ✅ Browser compatibility tested
-# ✅ Error scenarios handled
-# ✅ Performance benchmarks met
-```
-
-**Test 6.5: Regression Testing**
-```bash
-# ตรวจสอบว่าไม่ทำให้ features เดิมเสีย:
-
-# ✅ PHASE 1 (Session Management) ยังทำงานได้
-# ✅ PHASE 2 (FULL Mode) ยังทำงานได้
-# ✅ PHASE 3 (CUSTOM Mode + REST) ยังทำงานได้
-# ✅ PHASE 4 (Realtime STT) ยังทำงานได้
-# ✅ ไม่มี breaking changes
-
-# วิธีทดสอบ:
-# 1. ทดสอบแต่ละ mode/phase
-# 2. ตรวจสอบว่าทำงานเหมือนเดิม
-# 3. ตรวจสอบว่าไม่มี new bugs
-```
-
-**Testable Criteria:**
-- ✅ All end-to-end tests pass
-- ✅ Performance metrics ตรงตาม target
-- ✅ Documentation ครบถ้วนและถูกต้อง
-- ✅ No regressions (features เดิมยังทำงาน)
-- ✅ Production ready checklist ผ่านทั้งหมด
-- ✅ Code quality standards met
-- ✅ Browser compatibility confirmed
-- ✅ Security best practices followed
 
 ---
 
 ### 📊 Summary Timeline
 
-| Task | Estimated Time | Priority |
-|------|---------------|----------|
-| Task 1: Setup | 15-30 นาที | P0 (Required first) |
-| Task 2: WebSocket Server | 3-4 ชั่วโมง | P0 (Core functionality) |
-| Task 3: React Hook | 2-3 ชั่วโมง | P0 (Core functionality) |
-| Task 4: HTML Test Page | 1-2 ชั่วโมง | P1 (Testing tool) |
-| Task 5: Integration | 1.5-2 ชั่วโมง | P0 (Complete V2V) |
-| Task 6: Testing & Docs | 1-1.5 ชั่วโมง | P0 (Production ready) |
-| **TOTAL** | **9-13 ชั่วโมง** | - |
+| Task | Status | Estimated Time | Priority |
+|------|--------|---------------|----------|
+| Task 1: Setup | ✅ เสร็จ | 15-30 นาที | P0 |
+| Task 2: WebSocket Server | ✅ เสร็จ | 3-4 ชั่วโมง | P0 |
+| Task 3: React Hook | ✅ เสร็จ | 2-3 ชั่วโมง | P0 |
+| Task 4: Integration | ❌ ยังไม่ทำ | 1.5-2 ชั่วโมง | P0 |
+| Task 5: Testing & Docs | ❌ ยังไม่ทำ | 1-1.5 ชั่วโมง | P0 |
+| **COMPLETED** | **3/5 Tasks (60%)** | **~6-8 hours** | - |
+| **REMAINING** | **2/5 Tasks (40%)** | **~2-3 hours** | - |
 
 ### 🎯 Success Criteria
 
+**Tasks 1-3 (เสร็จแล้ว ✅):**
 - ✅ WebSocket server รันได้บน port 3013
-- ✅ Text chunking ทำงานถูกต้อง
+- ✅ Text chunking รองรับ delimiters ครบ: `,` `!` `?` `:` `;` `.`
 - ✅ Audio playback แบบ sequential ไม่สะดุด
-- ✅ Latency ลดลงจาก ~3-5 วินาที เป็น ~1.5-2.5 วินาที (40-50% improvement)
-- ✅ รองรับ eleven_v3 model
-- ✅ HTML test page ทำงานได้
-- ✅ Integration กับ Phase 4 (Realtime STT) สำเร็จ
-- ✅ Error handling ครบถ้วน
-- ✅ Logging ชัดเจน สำหรับ debugging
-- ✅ Production ready
+- ✅ React Hook พร้อมใช้งาน (WebSocket connection, audio queue, progress tracking)
+
+**Tasks 4-5 (ยังไม่ทำ ❌):**
+- ❌ Integration กับ LiveAvatarSession component
+- ❌ Complete V2V flow (Realtime STT → OpenAI → WebSocket TTS → Avatar)
+- ❌ Latency ลดลงเป็น ~1.5-2.5 วินาที (40-50% improvement)
+- ❌ Error handling ครบถ้วน
+- ❌ Production ready
 
 ### References
 - [ElevenLabs REST API Documentation](https://elevenlabs.io/docs/api-reference/text-to-speech)

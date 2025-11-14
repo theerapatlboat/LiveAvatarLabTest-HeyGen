@@ -84,11 +84,12 @@ wss.on('connection', (ws: WebSocket, req) => {
 
 /**
  * Text Chunking Logic
- * Split text into smaller chunks based on delimiters for progressive audio playback
- * Supports: Period (.), Exclamation (!), Question (?), Comma (,), Semicolon (;), Colon (:)
+ * Split text ONLY by delimiters - NO maxChunkSize limit
+ * Delimiters: Period (.), Exclamation (!), Question (?), Comma (,), Semicolon (;), Colon (:)
+ * Each delimiter creates a new chunk regardless of length
  */
-function chunkText(text: string, maxChunkSize: number = 200): string[] {
-  console.log('🔪 Starting text chunking...');
+function chunkText(text: string): string[] {
+  console.log('🔪 Starting delimiter-based text chunking...');
   console.log(`📝 Original text length: ${text.length} characters`);
 
   // If text is empty, return empty array
@@ -100,12 +101,10 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
   const chunks: string[] = [];
   let currentChunk = '';
 
-  // Combined regex for all delimiters
-  // Primary (strongest breaks): Period (.), Exclamation (!), Question (?)
-  // Secondary (weaker breaks): Comma (,), Semicolon (;), Colon (:)
+  // All delimiters: , ! ? : ; .
   const allDelimiters = /([.!?,;:])/g;
 
-  // Split by all delimiters first (primary + secondary)
+  // Split by all delimiters
   const parts = text.split(allDelimiters);
 
   for (let i = 0; i < parts.length; i++) {
@@ -114,34 +113,17 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
     // Skip empty parts
     if (!part || part.trim().length === 0) continue;
 
-    // If adding this part exceeds maxChunkSize, flush current chunk
-    if (currentChunk.length + part.length > maxChunkSize && currentChunk.length > 0) {
+    // Add part to current chunk
+    currentChunk += part;
+
+    // Check if current part is a delimiter
+    const isDelimiter = /[.!?,;:]/.test(part);
+
+    // If it's a delimiter, flush the current chunk
+    if (isDelimiter && currentChunk.trim().length > 0) {
       chunks.push(currentChunk.trim());
       console.log(`✂️ Chunk ${chunks.length}: ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
       currentChunk = '';
-    }
-
-    currentChunk += part;
-
-    // Determine if we should flush based on delimiter type
-    const isPrimaryDelimiter = /[.!?]/.test(part);
-    const isSecondaryDelimiter = /[,;:]/.test(part);
-
-    if (currentChunk.trim().length > 0) {
-      // Strategy 1: Always flush after primary delimiters (. ! ?) regardless of size
-      // This ensures natural sentence breaks
-      if (isPrimaryDelimiter) {
-        chunks.push(currentChunk.trim());
-        console.log(`✂️ Chunk ${chunks.length} (primary): ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
-        currentChunk = '';
-      }
-      // Strategy 2: Flush after secondary delimiters (, ; :) only if chunk is large
-      // This prevents too many tiny chunks for short texts
-      else if (isSecondaryDelimiter && currentChunk.length > maxChunkSize * 0.3) {
-        chunks.push(currentChunk.trim());
-        console.log(`✂️ Chunk ${chunks.length} (secondary): ${currentChunk.length} chars - "${currentChunk.substring(0, 50)}..."`);
-        currentChunk = '';
-      }
     }
   }
 
@@ -153,12 +135,12 @@ function chunkText(text: string, maxChunkSize: number = 200): string[] {
 
   // If no chunks were created (edge case), return original text as single chunk
   if (chunks.length === 0) {
-    console.log('⚠️ No delimiter-based chunks created, returning text as single chunk');
+    console.log('⚠️ No delimiters found, returning text as single chunk');
     chunks.push(text.trim());
-    console.log(`✂️ Chunk 1 (no delimiters): ${text.trim().length} chars - "${text.trim().substring(0, 50)}..."`);
+    console.log(`✂️ Chunk 1 (no delimiters): ${text.trim().length} chars`);
   }
 
-  console.log(`✅ Text chunked into ${chunks.length} chunks using delimiters: . ! ? , ; :`);
+  console.log(`✅ Text chunked into ${chunks.length} chunks using delimiters: , ! ? : ; .`);
   return chunks;
 }
 
@@ -193,8 +175,8 @@ async function handleTTSRequest(ws: WebSocket, message: any) {
   console.log(`🗣️ Voice ID: ${voice_id}`);
   console.log(`🤖 Model: ${model_id}`);
 
-  // Step 1: Chunk the text
-  const chunks = chunkText(text, 200);
+  // Step 1: Chunk the text (delimiter-based only, no size limit)
+  const chunks = chunkText(text);
 
   if (chunks.length === 0) {
     sendError(ws, 'Text chunking resulted in no chunks');
