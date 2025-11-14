@@ -139,12 +139,12 @@ const LiveAvatarSessionComponent: React.FC<{
       const combinedText = getCombinedTranscript();
 
       if (!combinedText || combinedText.trim().length === 0) {
-        console.log("⚠️ No transcript to process");
+        console.log("⚠️ [V2V] No transcript to process");
         return;
       }
 
       console.log("🚀 [V2V] Starting Voice-to-Voice flow...");
-      console.log("📝 [V2V] Combined transcript:", combinedText);
+      console.log("📝 [V2V] Transcript:", combinedText);
       console.log("📊 [V2V] Total length:", combinedText.length, "characters");
 
       // 1. Send combined transcript to OpenAI Chat API
@@ -157,28 +157,34 @@ const LiveAvatarSessionComponent: React.FC<{
       const { response: aiResponse } = await chatRes.json();
       console.log("✅ [V2V] AI Response:", aiResponse);
 
-      // 2. Convert AI response to speech using ElevenLabs TTS
-      console.log("🔊 [V2V] Converting to speech...");
-      const ttsRes = await fetch("/api/elevenlabs-text-to-speech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: aiResponse }),
-      });
-      const { audio } = await ttsRes.json();
-      console.log("✅ [V2V] TTS Audio generated");
+      // 2. Convert AI response to speech via WebSocket TTS (NEW!)
+      console.log("🔊 [V2V] Converting to speech via WebSocket TTS...");
 
-      // 3. Send audio to Avatar for lip-sync
-      if (sessionRef.current) {
-        console.log("👄 [V2V] Sending to Avatar...");
-        await sessionRef.current.repeatAudio(audio);
-        console.log("✅ [V2V] Avatar speaking!");
-      } else {
-        console.warn("⚠️ [V2V] Avatar session not available");
+      // Ensure WebSocket is connected
+      if (!isWSTTSConnected) {
+        console.log("⚠️ [V2V] WebSocket not connected, connecting...");
+        await connectWSTTS();
+        // Wait for connection to establish
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+
+      // Synthesize via WebSocket
+      await synthesizeWSTTS(aiResponse);
+      console.log("✅ [V2V] WebSocket TTS synthesis started");
+      console.log("🔊 [V2V] Audio will play automatically via Web Audio API");
+
+      // Note: Audio plays automatically via useWebSocketTTS hook
+      // Avatar lip-sync integration will be added in Step 4.3 (Progressive Lip-sync)
+
     } catch (error) {
       console.error("❌ [V2V] Error in voice-to-voice flow:", error);
     }
-  }, [getCombinedTranscript, sessionRef]);
+  }, [
+    getCombinedTranscript,
+    isWSTTSConnected,
+    connectWSTTS,
+    synthesizeWSTTS
+  ]);
 
   useEffect(() => {
     if (sessionState === SessionState.DISCONNECTED) {
